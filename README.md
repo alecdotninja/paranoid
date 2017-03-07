@@ -7,6 +7,8 @@ It definately shouldn't be used for anything serious. That said, since it doesn'
 
 ## Usage
 
+Paranoid only does  one thing, so there's only one command to learn. 
+
 `paranoid` requires at least three arguments. The hostname of the new container, the path of the new rootfs, and the path to the init process **relative to the new rootfs**. Any additional arguments will be passed on to PID 1.
 
 ![demo](demo.gif)
@@ -22,7 +24,7 @@ It definately shouldn't be used for anything serious. That said, since it doesn'
   * The networking is not currently isolated.
 
 
-## Todo
+## Todos
 
   * Map a range of uid's and gid's into the user namespace so that tools actually work correctly. **not possible?** **maybe some ptrace hackary?**
   * Isolate the networking (translate raw packet data from TUN fd into sockets in userspace). **started (see tun2socks)**
