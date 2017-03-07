@@ -7,15 +7,7 @@ It definately shouldn't be used for anything serious. That said, since it doesn'
 
 ## Usage
 
-```
-$ paranoid example-hostname ./rootfs /bin/bash -l
-root@example-hostname:/# ps aux
-USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-root         1  0.0  0.0  20252  3264 pts/0    Ss   02:25   0:00 /bin/bash -l
-root         5  0.0  0.0  17500  2108 pts/0    R+   02:25   0:00 ps aux
-root@example-hostname:/# exit
-logout
-```
+![demo](demo.gif)
 
   1. Extract [a rootfs tarball](https://us.images.linuxcontainers.org/images) somewhere on your system (ignore any permission errors related to `chown` or `mknod`).
   2. Run `paranoid container-hostname ./path-to-extracted-root-fs /bin/bash -l`.
