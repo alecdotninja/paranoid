@@ -7,6 +7,8 @@ It definately shouldn't be used for anything serious. That said, since it doesn'
 
 ## Usage
 
+`paranoid` requires at least three arguments. The hostname of the new container, the path of the new rootfs, and the path to the init process **relative to the new rootfs**. Any additional arguments will be passed on to PID 1.
+
 ![demo](demo.gif)
 
   1. Extract [a rootfs tarball](https://us.images.linuxcontainers.org/images) somewhere on your system (ignore any permission errors related to `chown` or `mknod`).
@@ -25,7 +27,7 @@ It definately shouldn't be used for anything serious. That said, since it doesn'
   * Map a range of uid's and gid's into the user namespace so that tools actually work correctly. **not possible?** **maybe some ptrace hackary?**
   * Isolate the networking (translate raw packet data from TUN fd into sockets in userspace). **started (see tun2socks)**
   * Cgroups and resource limits
-
+  * Rewrite in Rust
 
 ## Development
 
