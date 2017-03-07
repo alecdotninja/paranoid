@@ -17,7 +17,7 @@ root@example-hostname:/# exit
 logout
 ```
 
-  1. Extract [a rootfs tarball](https://us.images.linuxcontainers.org/images/debian/jessie/amd64/default/20170225_22:42/rootfs.tar.xz) somewhere on your system (ignore any permission errors related to `chown` or `mknod`).
+  1. Extract [a rootfs tarball](https://us.images.linuxcontainers.org/images) somewhere on your system (ignore any permission errors related to `chown` or `mknod`).
   2. Run `paranoid container-hostname ./path-to-extracted-root-fs /bin/bash -l`.
   3. Profit!
 
