@@ -685,6 +685,8 @@ void container_wait(container_t *container) {
 
 int main(int argc, char *argv[]) {
     if(argc < 4) {
+        fprintf(stdout, "Usage: %s HOSTNAME ROOT_FS_PATH INIT_PATH [INIT_ARGS...]\n", argv[0]);
+
         exit(EXIT_FAILURE);
     }
 
