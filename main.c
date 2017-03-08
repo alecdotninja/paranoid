@@ -23,6 +23,7 @@
 #define pivot_root(new_root, put_old_root) syscall(SYS_pivot_root, new_root, put_old_root)
 
 #define CHILD_STACK_SIZE (size_t)(1024 * 1024)
+// #define CHILD_CLONE_FLAGS (CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNS | CLONE_NEWUSER | CLONE_NEWPID)
 #define CHILD_CLONE_FLAGS (CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNS | CLONE_NEWUSER | CLONE_NEWPID)
 
 char child_stack[CHILD_STACK_SIZE] = { 0 };
@@ -308,13 +309,13 @@ void drop_unsafe_capabilities() {
         prctl(PR_CAPBSET_DROP, UNSAFE_CAPABILITIES[index], 0, 0, 0);
     }
 
-    cap_t capabilities = cap_get_proc();
-
-    if(capabilities != NULL) {
-        cap_set_flag(capabilities, CAP_INHERITABLE, sizeof(UNSAFE_CAPABILITIES), UNSAFE_CAPABILITIES, CAP_CLEAR);
-        cap_set_proc(capabilities);
-        cap_free(capabilities);
-    }
+//    cap_t capabilities = cap_get_proc();
+//
+//    if(capabilities != NULL) {
+//        cap_set_flag(capabilities, CAP_INHERITABLE, sizeof(UNSAFE_CAPABILITIES), UNSAFE_CAPABILITIES, CAP_CLEAR);
+//        cap_set_proc(capabilities);
+//        cap_free(capabilities);
+//    }
 }
 
 int set_uid_map(pid_t pid_outside, uid_t start_uid_inside, uid_t start_uid_outside, size_t extent_size) {
@@ -506,16 +507,48 @@ void container_initialize_network_namespace(container_t *container) {
 }
 
 void container_exec_init(container_t *container) {
-    if(execvpe(container->init_argv[0], container->init_argv, NULL) < 0) {
+    char *envp[] = { "TERM=linux", NULL };
+
+    if(execvpe(container->init_argv[0], container->init_argv, envp) < 0) {
         fprintf(stderr, "[!] Failed to exec init (%s).\n", container->init_argv[0]);
         exit(EXIT_FAILURE);
     }
 }
 
+// based on openpty from libc with extra stuff removed
+int create_pty(int *master_fd, int *slave_fd) {
+    if((*master_fd = getpt()) < 0) {
+       return -1;
+    }
+
+    if(grantpt(*master_fd) < 0) {
+        close(*master_fd);
+        return -2;
+    }
+
+    if(unlockpt(*master_fd) < 0) {
+        close(*master_fd);
+        return -3;
+    }
+
+    char pts_name[512];
+    if(ptsname_r(*master_fd, pts_name, sizeof(pts_name)) < 0) {
+        close(*master_fd);
+        return -4;
+    }
+
+    if((*slave_fd = open(pts_name,  O_RDWR | O_NOCTTY)) < 0) {
+        close(*master_fd);
+        return -5;
+    }
+
+    return 0;
+}
+
 void container_child_setup_tty(container_t *container) {
     int master_fd, slave_fd;
 
-    if(openpty(&master_fd, &slave_fd, NULL, NULL, NULL) < 0) {
+    if(create_pty(&master_fd, &slave_fd) < 0) {
         fprintf(stderr, "[!] Failed to create pty.\n");
         exit(EXIT_FAILURE);
     }
@@ -615,17 +648,17 @@ void container_spawn_child(container_t *container) {
     container->child_pid = child_pid;
 }
 
-//void container_spawn_network_relay(container_t *container) {
-//    int tun_fd;
-//    if((tun_fd = recv_fd(container->parent_signaling_fd)) < 0) {
-//        fprintf(stderr, "[!] Cannot claim eth0.\n");
-//        exit(EXIT_FAILURE);
-//    }
-//
-//    spawn_relay(tun_fd, STDOUT_FILENO);
-//
-//    send_message(container->parent_signaling_fd, 0);
-//}
+void container_spawn_network_relay(container_t *container) {
+    int tun_fd;
+    if((tun_fd = recv_fd(container->parent_signaling_fd)) < 0) {
+        fprintf(stderr, "[!] Cannot claim eth0.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    spawn_relay(tun_fd, STDOUT_FILENO);
+
+    send_message(container->parent_signaling_fd, 0);
+}
 
 void container_spawn_tty_relay(container_t *container) {
     int tty_fd;
@@ -640,8 +673,14 @@ void container_spawn_tty_relay(container_t *container) {
 
         if(tcgetattr(STDIN_FILENO, &termios) >= 0 && ioctl(STDIN_FILENO, TIOCGWINSZ, &winsize) >= 0) {
             // turn off echo
-            termios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
-            termios.c_oflag &= ~(ONLCR);
+            termios.c_iflag |= IGNPAR;
+            termios.c_iflag &= ~(ISTRIP | INLCR | IGNCR | ICRNL | IXON | IXANY | IXOFF);
+            termios.c_iflag &= ~IUCLC;
+            termios.c_lflag &= ~(TOSTOP | ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHONL);
+            termios.c_lflag &= ~IEXTEN;
+            termios.c_oflag &= ~OPOST;
+            termios.c_cc[VMIN] = 1;
+            termios.c_cc[VTIME] = 0;
 
             if(tcsetattr(tty_fd, TCSANOW, &termios) < 0 || ioctl(tty_fd, TIOCSWINSZ, &winsize) < 0) {
                 fprintf(stderr, "[!] Warning! Failed to properly configure tty.\n");

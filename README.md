@@ -33,7 +33,7 @@ Paranoid only does  one thing, so there's only one command to learn.
 
 ## Development
 
-This project uses [cmake](https://cmake.org/cmake-tutorial/). You can probably get it building by running `cmake CMakeLists.txt` to generate the `Makefile`, then `make`. You'll need the development headers for `libcap` installed.
+This project uses [cmake](https://cmake.org/cmake-tutorial/). You can probably get it building by running `cmake CMakeLists.txt` to generate the `Makefile`, then `make`.
 
 
 ## Contributing
