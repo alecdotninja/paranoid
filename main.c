@@ -19,7 +19,7 @@
 #include <sys/capability.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
-#include <assert.h>
+#include <pthread.h>
 
 #define pivot_root(new_root, put_old_root) syscall(SYS_pivot_root, new_root, put_old_root)
 
@@ -152,42 +152,54 @@ int copy_file(const char * source_file_path, const char * destination_file_path)
     return 0;
 }
 
-pid_t spawn_relay(int in_fd, int out_fd) {
-    pid_t relay_pid;
-    if((relay_pid = fork()) < 0) {
-        fprintf(stderr, "[!] Failed to create relay (%i -> %i).\n", in_fd, out_fd);
-    }
+typedef struct relay {
+    pthread_t relay_thread;
 
-    if(relay_pid == 0) {
-        if(prctl(PR_SET_PDEATHSIG, SIGKILL) < 0) {
-            _exit(EXIT_FAILURE);
+    int in_fd;
+    int out_fd;
+} relay_t;
+
+void *do_relay(void *data) {
+    relay_t *relay = data;
+
+    int in_fd = relay->in_fd;
+    int out_fd = relay->out_fd;
+
+    char buffer[BUFSIZ];
+    ssize_t remaing, written;
+
+    while(1) {
+        if((remaing = read(in_fd, &buffer, sizeof(buffer))) < 0) {
+            break;
         }
 
-        char buffer[128];
-        ssize_t remaing, written;
+        if(remaing == 0) {
+            break;
+        }
 
-        while(1) {
-            if((remaing = read(in_fd, &buffer, sizeof(buffer))) < 0) {
+        while(remaing > 0) {
+            if((written = write(out_fd, &buffer, (size_t)remaing)) < 0) {
                 break;
             }
 
-            if(remaing == 0) {
-                break;
-            }
-
-            while(remaing > 0) {
-                if((written = write(out_fd, &buffer, (size_t)remaing)) < 0) {
-                    break;
-                }
-
-                remaing -= written;
-            }
+            remaing -= written;
         }
-
-        _exit(EXIT_FAILURE);
     }
 
-    return relay_pid;
+    return NULL;
+}
+
+relay_t *spawn_relay(int in_fd, int out_fd) {
+    relay_t *relay = malloc(sizeof(relay_t));
+    relay->in_fd = in_fd;
+    relay->out_fd = out_fd;
+
+    if(pthread_create(&relay->relay_thread, NULL, do_relay, relay) < 0) {
+        free(relay);
+        relay = NULL;
+    }
+
+    return relay;
 }
 
 void container_initialize_fs_namespace(container_t *container) {
