@@ -20,13 +20,11 @@ Paranoid only does  one thing, so there's only one command to learn.
 
 ## Limitations
 
-  * Only a single uid and gid are mapped into the container's user namespace, so you can only login as root. This can cause a few strange issues, but things mostly work.
   * The networking is not currently isolated.
 
 
 ## Todos
 
-  * Map a range of uid's and gid's into the user namespace so that tools actually work correctly. **not possible?** **maybe some ptrace hackary?**
   * Isolate the networking (translate raw packet data from TUN fd into sockets in userspace). **started (see tun2socks)**
   * Cgroups and resource limits
   * Rewrite in Rust

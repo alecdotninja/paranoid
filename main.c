@@ -19,6 +19,7 @@
 #include <sys/capability.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
+#include <assert.h>
 
 #define pivot_root(new_root, put_old_root) syscall(SYS_pivot_root, new_root, put_old_root)
 
@@ -396,6 +397,23 @@ int disable_setgroups(pid_t pid_outside) {
     }
 }
 
+int map_effective_id_as_root_for_process(pid_t pid) {
+    uid_t uid = geteuid();
+    gid_t gid = geteuid();
+
+    disable_setgroups(pid);
+
+    if(set_uid_map(pid, 0, uid, 1) < 0) {
+        return -1;
+    }
+
+    if(set_gid_map(pid, 0, gid, 1) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
 void container_initialize_signaling_socket(container_t *container) {
     int signaling_fds[2];
 
@@ -506,8 +524,36 @@ void container_initialize_network_namespace(container_t *container) {
 //    system("ip route add default via 10.0.15.1");
 }
 
+ssize_t mkenviron(char *buffer, size_t buffer_size, const char *key, const char *default_value) {
+    const char *value = secure_getenv(key);
+
+    if(value == NULL) {
+        value = default_value;
+    }
+
+    ssize_t written = snprintf(buffer, buffer_size, "%s=%s", key, value);
+
+    if(written > 0 && written <= buffer_size) {
+        return 0;
+    }else{
+        return -1;
+    }
+}
+
 void container_exec_init(container_t *container) {
-    char *envp[] = { "TERM=linux", NULL };
+    char term_environ[32];
+    if(mkenviron(term_environ, sizeof(term_environ), "TERM", "linux") < 0) {
+        fprintf(stderr, "[!] Failed to setup env.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    char lang_environ[32];
+    if(mkenviron(lang_environ, sizeof(lang_environ), "LANG", "en_US.UTF-8") < 0) {
+        fprintf(stderr, "[!] Failed to setup env.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    char *envp[] = { term_environ, lang_environ, NULL };
 
     if(execvpe(container->init_argv[0], container->init_argv, envp) < 0) {
         fprintf(stderr, "[!] Failed to exec init (%s).\n", container->init_argv[0]);
@@ -606,6 +652,10 @@ int child_main(void *data) {
         exit(EXIT_FAILURE);
     }
 
+    setuid(0);
+    setgid(0);
+    setgroups(0, NULL);
+
     container_initialize_network_namespace(container);
     container_initialize_fs_namespace(container);
 
@@ -618,20 +668,90 @@ int child_main(void *data) {
     return EXIT_FAILURE;
 }
 
-void container_initialize_user_namespace(container_t *container) {
-    uid_t uid = geteuid();
-    gid_t gid = geteuid();
 
-    disable_setgroups(container->child_pid);
-
-    if(set_uid_map(container->child_pid, 0, uid, 1) < 0) {
-        fprintf(stderr, "[!] Failed to set uid map (%u %u %u) on child process %i.\n", 0, uid, 1, container->child_pid);
-        exit(EXIT_FAILURE);
+int scan_shadow_subid_config(const char *filename, const char *target_loginname, unsigned int *target_subid_start, size_t *target_subid_count) {
+    FILE *subid_config;
+    if((subid_config = fopen(filename, "r")) == NULL) {
+        return -1;
     }
 
-    if(set_gid_map(container->child_pid, 0, gid, 1) < 0) {
-        fprintf(stderr, "[!] Failed to set gid map (%u %u %u) on child process %i.\n", 0, gid, 1, container->child_pid);
-        exit(EXIT_FAILURE);
+    int found = 0;
+
+    char *buffer = NULL;
+    size_t buffer_size = 0;
+
+    char loginname[32] = { 0 };
+    unsigned int subid_start = 0;
+    size_t subid_count = 0;
+
+    while(getline(&buffer, &buffer_size, subid_config) > 0) {
+        if(sscanf(buffer, "%32[^:]:%u:%lu", loginname, &subid_start, &subid_count) == 3) {
+            if(strcmp(loginname, target_loginname) == 0) {
+                found = 1;
+                break;
+            }
+        }
+    }
+
+    if(buffer != NULL) {
+        free(buffer);
+    }
+
+    fclose(subid_config);
+
+    if(found == 0) {
+        return -1;
+    }
+
+    *target_subid_start = subid_start;
+    *target_subid_count = subid_count;
+
+    return 0;
+}
+
+int map_effective_id_as_root_and_subids_for_process(pid_t pid) {
+    gid_t gid = geteuid();
+    uid_t uid = geteuid();
+
+    const char *loginname;
+    if((loginname = getlogin()) == NULL) {
+        return -1;
+    }
+
+    uid_t subuid_start;
+    size_t subuid_count;
+    if(scan_shadow_subid_config("/etc/subuid", loginname, &subuid_start, &subuid_count) < 0) {
+        return -2;
+    }
+
+    gid_t subgid_start;
+    size_t subgid_count;
+    if(scan_shadow_subid_config("/etc/subgid", loginname, &subgid_start, &subgid_count) < 0) {
+        return -3;
+    }
+
+    char cmdline[256];
+    snprintf(cmdline, sizeof(cmdline), "newuidmap %u 0 %u 1 1 %u %lu", pid, uid, subuid_start, subuid_count);
+    if(system(cmdline) != EXIT_SUCCESS) {
+        return -4;
+    }
+
+    snprintf(cmdline, sizeof(cmdline), "newgidmap %u 0 %u 1 1 %u %lu", pid, gid, subgid_start, subgid_count);
+    if(system(cmdline) != EXIT_SUCCESS) {
+        return -5;
+    }
+
+    return 0;
+}
+
+void container_initialize_user_namespace(container_t *container) {
+    if(map_effective_id_as_root_and_subids_for_process(container->child_pid) < 0) {
+        fprintf(stderr, "[*] Failed to subids into namespace. Falling back to single user mapping...\n");
+
+        if(map_effective_id_as_root_for_process(container->child_pid) < 0) {
+            fprintf(stderr, "[!] Failed to map effective user into namespace!\n");
+            exit(EXIT_FAILURE);
+        }
     }
 }
 
