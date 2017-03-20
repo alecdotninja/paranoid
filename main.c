@@ -21,6 +21,7 @@
 #include <sys/capability.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
+#include <linux/kdev_t.h>
 
 #define pivot_root(new_root, put_old_root) syscall(SYS_pivot_root, new_root, put_old_root)
 
@@ -203,24 +204,70 @@ relay_t *spawn_relay(int in_fd, int out_fd) {
     return relay;
 }
 
+void link_dev(const char * source_path, const char * dest_path, mode_t mode) {
+    mknod(dest_path, mode, S_IFCHR);
+
+    if(mount(source_path, dest_path, NULL, MS_BIND, NULL) < 0) {
+        fprintf(stderr, "[!] Cannot mount %s inside container.\n", dest_path);
+        exit(EXIT_FAILURE);
+    }
+}
+
+void build_dev() {
+    // http://www.linuxfromscratch.org/lfs/view/6.1/chapter06/devices.html
+
+    if(mount("tmpfs", "./dev", "tmpfs", MS_NOSUID, "") < 0) {
+        fprintf(stderr, "[!] Cannot mount dev inside container.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    mkdir("./dev/pts", 755);
+
+    if(mount("devpts", "./dev/pts", "devpts", MS_MGC_VAL, "newinstance") < 0) {
+        fprintf(stderr, "[!] Cannot mount pts inside container.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    mkdir("./dev/net", 755);
+
+    if(mount("/dev/net", "./dev/net", NULL, MS_BIND | MS_REC, NULL) < 0) {
+        fprintf(stderr, "[!] Cannot mount net inside container.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    link_dev("/dev/null", "./dev/null", 666);
+    link_dev("/dev/zero", "./dev/zero", 666);
+    link_dev("/dev/random", "./dev/random", 444);
+    link_dev("/dev/urandom", "./dev/urandom", 444);
+    link_dev("/dev/full", "./dev/full", 622);
+    link_dev("/dev/tty", "./dev/tty", 755);
+    link_dev("./dev/pts/ptmx", "./dev/ptmx", 666);
+
+    symlink("/proc/self/fd", "./dev/fd");
+    symlink("/proc/kcore", "./dev/core");
+    symlink("/proc/self/fd/0", "./dev/stdin");
+    symlink("/proc/self/fd/1", "./dev/stdout");
+    symlink("/proc/self/fd/2", "./dev/stderr");
+}
+
 void container_initialize_fs_namespace(container_t *container) {
     if(unshare(CLONE_FS) < 0) {
-        fprintf(stderr, "[!] Cannot enter a file system namespace. Perhaps your kernel does not support it.");
+        fprintf(stderr, "[!] Cannot enter a file system namespace. Perhaps your kernel does not support it.\n");
         exit(EXIT_FAILURE);
     }
 
     if(mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0) {
-        fprintf(stderr, "[!] Cannot create a private mount tree. Perhaps your kernel does not support it.");
+        fprintf(stderr, "[!] Cannot create a private mount tree. Perhaps your kernel does not support it.\n");
         exit(EXIT_FAILURE);
     }
 
     if(mount(container->root_path, container->root_path, NULL, MS_BIND, NULL) < 0) {
-        fprintf(stderr, "[!] Cannot mount root_path inside container.");
+        fprintf(stderr, "[!] Cannot mount root_path inside container.\n");
         exit(EXIT_FAILURE);
     }
 
     if(chdir(container->root_path) < 0) {
-        fprintf(stderr, "[!] Cannot move to root inside container.");
+        fprintf(stderr, "[!] Cannot move to root inside container.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -233,8 +280,10 @@ void container_initialize_fs_namespace(container_t *container) {
 
     copy_file("/etc/resolv.conf", "./etc/resolv.conf");
 
+    // https://www.freedesktop.org/wiki/Software/systemd/ContainerInterface/
+
     if(mount("proc", "./proc", "proc", MS_MGC_VAL, NULL) < 0) {
-        fprintf(stderr, "[!] Cannot mount proc inside container.");
+        fprintf(stderr, "[!] Cannot mount proc inside container.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -243,54 +292,48 @@ void container_initialize_fs_namespace(container_t *container) {
         exit(EXIT_FAILURE);
     }
 
-    if(mount("/dev", "./dev", NULL, MS_BIND | MS_REC | MS_RDONLY, NULL) < 0) {
-        fprintf(stderr, "[!] Cannot mount dev inside container.");
-        exit(EXIT_FAILURE);
-    }
+//    if(mount("/dev", "./dev", NULL, MS_BIND | MS_REC | MS_RDONLY, NULL) < 0) {
+//        fprintf(stderr, "[!] Cannot mount dev inside container.");
+//        exit(EXIT_FAILURE);
+//    }
 
-    if(mount("devpts", "./dev/pts", "devpts", MS_MGC_VAL, "newinstance") < 0) {
-        fprintf(stderr, "[!] Cannot mount pts inside container.");
-        exit(EXIT_FAILURE);
-    }
 
-    if(mount("./dev/pts/ptmx", "./dev/ptmx", NULL, MS_BIND | MS_REC, NULL) < 0) {
-        fprintf(stderr, "[!] Cannot mount ptmx inside container.");
-        exit(EXIT_FAILURE);
-    }
+    build_dev();
+
 
     if(mount("tmpfs", "./tmp", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
-        fprintf(stderr, "[!] Cannot mount tmp inside container.");
+        fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
         exit(EXIT_FAILURE);
     }
 
     if(mount("tmpfs", "./run", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
-        fprintf(stderr, "[!] Cannot mount tmp inside container.");
+        fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
         exit(EXIT_FAILURE);
     }
 
     char old_root_path[] = "./tmp/old-root.XXXXXX";
     if(mkdtemp(old_root_path) == NULL) {
-        fprintf(stderr, "[!] Could not create mount point for old root.");
+        fprintf(stderr, "[!] Could not create mount point for old root.\n");
         exit(EXIT_FAILURE);
     }
 
     if(pivot_root(".", old_root_path) < 0) {
-        fprintf(stderr, "[!] Could not pivot to new root.");
+        fprintf(stderr, "[!] Could not pivot to new root.\n");
         exit(EXIT_FAILURE);
     }
 
     if(umount2(old_root_path, MNT_DETACH) < 0) {
-        fprintf(stderr, "[!] Could not detach from old root.");
+        fprintf(stderr, "[!] Could not detach from old root.\n");
         exit(EXIT_FAILURE);
     }
 
     if(rmdir(old_root_path) < 0) {
-        fprintf(stderr, "[!] Could remove old root mount point.");
+        fprintf(stderr, "[!] Could remove old root mount point.\n");
         exit(EXIT_FAILURE);
     }
 
     if(chdir("/") < 0) {
-        fprintf(stderr, "[!] Could not move to new root.");
+        fprintf(stderr, "[!] Could not move to new root.\n");
         exit(EXIT_FAILURE);
     }
 }
@@ -660,6 +703,9 @@ void container_child_setup_tty(container_t *container) {
         exit(EXIT_FAILURE);
     }
 
+    link_dev("/dev/pts/0", "/dev/console", 600);
+    link_dev("/dev/pts/0", "/dev/tty0", 600);
+
     if(send_fd(container->child_signaling_fd, master_fd) < 0) {
         fprintf(stderr, "[!] Failed to send pty to parent.\n");
         exit(EXIT_FAILURE);
@@ -877,6 +923,10 @@ void container_spawn_tty_relay(container_t *container) {
 }
 
 void container_start(container_t *container) {
+    if(geteuid() == 0 || getegid() == 0) {
+        fprintf(stderr, "[!] Warning! paraniod is not designed to be run as root.\n");
+    }
+
     container_initialize_signaling_socket(container);
     container_spawn_child(container);
     container_finalize_signaling_socket_parent(container);
