@@ -23,12 +23,12 @@
 
 #define pivot_root(new_root, put_old_root) syscall(SYS_pivot_root, new_root, put_old_root)
 
-#define CHILD_STACK_SIZE (size_t)(1024 * 1024)
 // #define CHILD_CLONE_FLAGS (CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNS | CLONE_NEWUSER | CLONE_NEWPID)
 #define CHILD_CLONE_FLAGS (CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNS | CLONE_NEWUSER | CLONE_NEWPID)
 
-char child_stack[CHILD_STACK_SIZE] = { 0 };
-#define CHILD_STACK_TOP (void *)(child_stack + CHILD_STACK_SIZE)
+pid_t __attribute__((noinline)) spawn(int (*main) (void *), int flags, void *arg) {
+    return clone(main, __builtin_frame_address(0), flags | SIGCHLD, arg);
+}
 
 typedef struct __container {
     pid_t child_pid;
@@ -770,7 +770,7 @@ void container_initialize_user_namespace(container_t *container) {
 void container_spawn_child(container_t *container) {
     void *child_data = (void *)container;
 
-    pid_t child_pid = clone(child_main, CHILD_STACK_TOP, CHILD_CLONE_FLAGS | SIGCHLD, child_data);
+    pid_t child_pid = spawn(child_main, CHILD_CLONE_FLAGS, child_data);
 
     if(child_pid < 0) {
         fprintf(stderr, "[!] Cannot spawn child process. Perhaps your kernel does not support namespaces?\n");
