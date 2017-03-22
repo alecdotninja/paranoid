@@ -21,7 +21,6 @@
 #include <sys/capability.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
-#include <linux/kdev_t.h>
 
 #define pivot_root(new_root, put_old_root) syscall(SYS_pivot_root, new_root, put_old_root)
 
@@ -235,6 +234,13 @@ void build_dev() {
         exit(EXIT_FAILURE);
     }
 
+    mkdir("./dev/shm", 755);
+
+    if(mount("tmpfs", "./dev/shm", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
+        fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
+        exit(EXIT_FAILURE);
+    }
+
     link_dev("/dev/null", "./dev/null", 666);
     link_dev("/dev/zero", "./dev/zero", 666);
     link_dev("/dev/random", "./dev/random", 444);
@@ -274,8 +280,6 @@ void container_initialize_fs_namespace(container_t *container) {
     mkdir("./proc", S_IRWXU);
     mkdir("./sys", S_IRWXU);
     mkdir("./dev", S_IRWXU);
-    mkdir("./tmp", S_IRWXU);
-    mkdir("./run", S_IRWXU);
     mkdir("./ect", S_IRWXU);
 
     copy_file("/etc/resolv.conf", "./etc/resolv.conf");
@@ -292,21 +296,25 @@ void container_initialize_fs_namespace(container_t *container) {
         exit(EXIT_FAILURE);
     }
 
-//    if(mount("/dev", "./dev", NULL, MS_BIND | MS_REC | MS_RDONLY, NULL) < 0) {
-//        fprintf(stderr, "[!] Cannot mount dev inside container.");
-//        exit(EXIT_FAILURE);
-//    }
-
-
     build_dev();
 
+    mkdir("./tmp", S_IRWXU);
 
     if(mount("tmpfs", "./tmp", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
         fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
         exit(EXIT_FAILURE);
     }
 
+    mkdir("./run", S_IRWXU);
+
     if(mount("tmpfs", "./run", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
+        fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    mkdir("./run/lock", S_IRWXU);
+
+    if(mount("tmpfs", "./run/lock", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
         fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
         exit(EXIT_FAILURE);
     }
@@ -657,7 +665,7 @@ void container_exec_init(container_t *container) {
         exit(EXIT_FAILURE);
     }
 
-    char *envp[] = { term_environ, lang_environ, NULL };
+    char *envp[] = { term_environ, lang_environ, "container=paranoid", NULL };
 
     if(execvpe(container->init_argv[0], container->init_argv, envp) < 0) {
         fprintf(stderr, "[!] Failed to exec init (%s).\n", container->init_argv[0]);
