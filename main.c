@@ -169,7 +169,18 @@ void *do_relay(void *data) {
     char buffer[BUFSIZ];
     ssize_t remaing, written;
 
+    struct termios	termios;
+    struct winsize	winsize;
+
     while(1) {
+        if(isatty(in_fd) && isatty(out_fd)) {
+            tcgetattr(in_fd, &termios);
+            tcsetattr(out_fd, TCSANOW, &termios);
+
+            ioctl(in_fd, TIOCGWINSZ, &winsize);
+            ioctl(out_fd, TIOCSWINSZ, &winsize);
+        }
+
         if((remaing = read(in_fd, &buffer, sizeof(buffer))) < 0) {
             break;
         }
@@ -370,10 +381,6 @@ const int UNSAFE_CAPABILITIES[] = {
 };
 
 void drop_unsafe_capabilities() {
-    for(size_t index = 0; index < sizeof(UNSAFE_CAPABILITIES); index++) {
-        prctl(PR_CAPBSET_DROP, UNSAFE_CAPABILITIES[index], 0, 0, 0);
-    }
-
     cap_t capabilities = cap_get_proc();
 
     if(capabilities != NULL) {
@@ -749,7 +756,7 @@ void container_child_setup_tty(container_t *container) {
 
     if(isatty(STDERR_FILENO)) {
         if(dup2(slave_fd, STDERR_FILENO) < 0) {
-            fprintf(stderr, "[!] Failed to tty to STDOUT.\n");
+            fprintf(stderr, "[!] Failed to tty to STDERR.\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -901,27 +908,6 @@ void container_spawn_tty_relay(container_t *container) {
     if((tty_fd = recv_fd(container->parent_signaling_fd)) < 0) {
         fprintf(stderr, "[!] Failed to receive tty.\n");
         exit(EXIT_FAILURE);
-    }
-
-    if(isatty(STDIN_FILENO)) {
-        struct termios	termios;
-        struct winsize	winsize;
-
-        if(tcgetattr(STDIN_FILENO, &termios) >= 0 && ioctl(STDIN_FILENO, TIOCGWINSZ, &winsize) >= 0) {
-            // turn off echo
-            termios.c_iflag |= IGNPAR;
-            termios.c_iflag &= ~(ISTRIP | INLCR | IGNCR | ICRNL | IXON | IXANY | IXOFF);
-            termios.c_iflag &= ~IUCLC;
-            termios.c_lflag &= ~(TOSTOP | ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHONL);
-            termios.c_lflag &= ~IEXTEN;
-            termios.c_oflag &= ~OPOST;
-            termios.c_cc[VMIN] = 1;
-            termios.c_cc[VTIME] = 0;
-
-            if(tcsetattr(tty_fd, TCSANOW, &termios) < 0 || ioctl(tty_fd, TIOCSWINSZ, &winsize) < 0) {
-                fprintf(stderr, "[!] Warning! Failed to properly configure tty.\n");
-            }
-        }
     }
 
     spawn_relay(STDIN_FILENO, tty_fd);
