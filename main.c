@@ -684,26 +684,26 @@ int open_tun() {
 void container_initialize_network_namespace(container_t *container) {
     sethostname(container->hostname, strlen(container->hostname));
 
-//    int tun_fd;
-//    if((tun_fd = open_tun()) < 0) {
-//        fprintf(stderr, "[!] Failed to create eth0\n");
-//        exit(EXIT_FAILURE);
-//    }
-//
-//    if(send_fd(container->child_signaling_fd, tun_fd) < 0) {
-//        fprintf(stderr, "[!] Failed to send eth0 outside of the container\n");
-//        exit(EXIT_FAILURE);
-//    }
-//
-//    if(receive_message(container->child_signaling_fd) < 0) {
-//        fprintf(stderr, "[!] Failed to wait for parent to take ownership of eth0\n");
-//        exit(EXIT_FAILURE);
-//    }
-//
-//    if(close(tun_fd) < 0) {
-//        fprintf(stderr, "[!] Failed to abandon eth0\n");
-//        exit(EXIT_FAILURE);
-//    }
+    int tun_fd;
+    if((tun_fd = open_tun()) < 0) {
+        fprintf(stderr, "[!] Failed to create eth0\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if(send_fd(container->child_signaling_fd, tun_fd) < 0) {
+        fprintf(stderr, "[!] Failed to send eth0 outside of the container\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if(receive_message(container->child_signaling_fd) < 0) {
+        fprintf(stderr, "[!] Failed to wait for parent to take ownership of eth0\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if(close(tun_fd) < 0) {
+        fprintf(stderr, "[!] Failed to abandon eth0\n");
+        exit(EXIT_FAILURE);
+    }
 //
 //    system("ip link set dev lo up");
 //    system("ip link set dev eth0 up");
@@ -787,8 +787,8 @@ void container_child_setup_tty(container_t *container) {
         exit(EXIT_FAILURE);
     }
 
-    link_dev("/dev/pts/0", "/dev/console", 600);
-    link_dev("/dev/pts/0", "/dev/tty0", 600);
+//    link_dev("/dev/pts/0", "/dev/console", 600);
+//    link_dev("/dev/pts/0", "/dev/tty0", 600);
 
     if(send_fd(container->child_signaling_fd, master_fd) < 0) {
         fprintf(stderr, "[!] Failed to send pty to parent.\n");
@@ -997,7 +997,7 @@ void container_start(container_t *container) {
 
     send_message(container->parent_signaling_fd, 0);
 
-//    container_spawn_network_relay(container);
+    container_spawn_network_relay(container);
     container_spawn_tty_relay(container);
 }
 
