@@ -20,14 +20,13 @@ Paranoid only does  one thing, so there's only one command to learn.
 
 ## Limitations
 
-  * The networking is not currently isolated.
+  * Networking does not work at all at the moment.
 
 
 ## Todos
 
-  * Isolate the networking (translate raw packet data from TUN fd into sockets in userspace). **started (see tun2socks)**
-  * Cgroups and resource limits
-  * Rewrite in Rust
+  * Get userspace networking working with lwip
+
 
 ## Development
 
