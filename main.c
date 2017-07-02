@@ -12,6 +12,7 @@
 #include <utmp.h>
 #include <seccomp.h>
 #include <pthread.h>
+#include <libcgroup.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
@@ -22,10 +23,13 @@
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
+#ifndef CLONE_NEWCGROUP
+#define CLONE_NEWCGROUP 0x02000000
+#endif
+
 #define pivot_root(new_root, put_old_root) syscall(SYS_pivot_root, new_root, put_old_root)
 
-// #define CHILD_CLONE_FLAGS (CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNS | CLONE_NEWUSER | CLONE_NEWPID)
-#define CHILD_CLONE_FLAGS (CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNS | CLONE_NEWUSER | CLONE_NEWPID)
+#define CHILD_CLONE_FLAGS (CLONE_NEWCGROUP | CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNS | CLONE_NEWUSER | CLONE_NEWPID)
 
 pid_t __attribute__((noinline)) spawn(int (*main) (void *), int flags, void *arg) {
     return clone(main, __builtin_frame_address(0), flags | SIGCHLD, arg);
@@ -225,6 +229,7 @@ void link_dev(const char * source_path, const char * dest_path, mode_t mode) {
 
 void build_dev() {
     // http://www.linuxfromscratch.org/lfs/view/6.1/chapter06/devices.html
+    mkdir("./dev", S_IRWXU);
 
     if(mount("tmpfs", "./dev", "tmpfs", MS_NOSUID, "") < 0) {
         fprintf(stderr, "[!] Cannot mount dev inside container.\n");
@@ -267,6 +272,107 @@ void build_dev() {
     symlink("/proc/self/fd/2", "./dev/stderr");
 }
 
+void mount_cgroup_subsystem(const char * subsystem) {
+    char path[2048];
+    snprintf(path, sizeof(path), "./sys/fs/cgroup/%s", subsystem);
+
+    mkdir(path, S_IRWXU);
+
+    if(mount("cgroup", path, "cgroup", MS_MGC_VAL | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME, subsystem) < 0) {
+        fprintf(stderr, "[!] Failed to mount %s cgroup subsystem at %s.\n", subsystem, path);
+    }
+}
+
+void mount_cgroup_subsystems() {
+    void *handle;
+    struct controller_data data;
+
+    int status = cgroup_get_all_controller_begin(&handle, &data);
+
+    char subsystems[16][1024] = { 0 };
+
+    while (status != ECGEOF) {
+        if(data.hierarchy >= 0 && data.hierarchy < 16) {
+            char *subsystem = subsystems[data.hierarchy];
+
+            if(strlen(subsystem) > 0) {
+                strncat(subsystem, ",", 1024 - strlen(subsystem));
+            }
+
+            strncat(subsystem, data.name, 1024 - strlen(subsystem));
+        }
+
+        status = cgroup_get_all_controller_next(&handle, &data);
+
+        if(status && status != ECGEOF) {
+            break;
+        }
+    }
+
+    cgroup_get_all_controller_end(&handle);
+
+    for(size_t hierarchy = 0; hierarchy < 16; hierarchy++) {
+        char *subsystem = subsystems[hierarchy];
+
+        if (strlen(subsystem) > 0) {
+            mount_cgroup_subsystem(subsystem);
+        }
+    }
+}
+
+void build_sys() {
+    mkdir("./sys", S_IRWXU);
+
+    if(mount("sysfs", "./sys", "sysfs", MS_MGC_VAL, NULL) < 0) {
+        fprintf(stderr, "[!] Cannot mount sys inside container.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if(mount("tmpfs", "./sys/fs/cgroup", "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME, "mode=755") < 0) {
+        fprintf(stderr, "[!] Cannot mount cgroup root inside container.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    mount_cgroup_subsystems();
+
+    if(mount("tmpfs", "./sys/fs/cgroup", "tmpfs", MS_REMOUNT | MS_RDONLY, NULL) < 0) {
+        fprintf(stderr, "[!] Cannot remount cgroup root as readonly.\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void build_proc() {
+    mkdir("./proc", S_IRWXU);
+
+    if(mount("proc", "./proc", "proc", MS_MGC_VAL, NULL) < 0) {
+        fprintf(stderr, "[!] Cannot mount proc inside container.\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void build_tmp_and_run() {
+    mkdir("./tmp", S_IRWXU);
+
+    if(mount("tmpfs", "./tmp", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
+        fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    mkdir("./run", S_IRWXU);
+
+    if(mount("tmpfs", "./run", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
+        fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    mkdir("./run/lock", S_IRWXU);
+
+    if(mount("tmpfs", "./run/lock", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
+        fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
 void container_initialize_fs_namespace(container_t *container) {
     if(unshare(CLONE_FS) < 0) {
         fprintf(stderr, "[!] Cannot enter a file system namespace. Perhaps your kernel does not support it.\n");
@@ -288,47 +394,10 @@ void container_initialize_fs_namespace(container_t *container) {
         exit(EXIT_FAILURE);
     }
 
-    mkdir("./proc", S_IRWXU);
-    mkdir("./sys", S_IRWXU);
-    mkdir("./dev", S_IRWXU);
-    mkdir("./ect", S_IRWXU);
-
-    copy_file("/etc/resolv.conf", "./etc/resolv.conf");
-
-    // https://www.freedesktop.org/wiki/Software/systemd/ContainerInterface/
-
-    if(mount("proc", "./proc", "proc", MS_MGC_VAL, NULL) < 0) {
-        fprintf(stderr, "[!] Cannot mount proc inside container.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    if(mount("/sys", "./sys", NULL, MS_BIND | MS_REC | MS_RDONLY, NULL) < 0) {
-        fprintf(stderr, "[!] Cannot mount sys inside container.");
-        exit(EXIT_FAILURE);
-    }
-
+    build_proc();
+    build_sys();
     build_dev();
-
-    mkdir("./tmp", S_IRWXU);
-
-    if(mount("tmpfs", "./tmp", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
-        fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    mkdir("./run", S_IRWXU);
-
-    if(mount("tmpfs", "./run", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
-        fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    mkdir("./run/lock", S_IRWXU);
-
-    if(mount("tmpfs", "./run/lock", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {
-        fprintf(stderr, "[!] Cannot mount tmp inside container.\n");
-        exit(EXIT_FAILURE);
-    }
+    build_tmp_and_run();
 
     char old_root_path[] = "./tmp/old-root.XXXXXX";
     if(mkdtemp(old_root_path) == NULL) {

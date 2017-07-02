@@ -8,4 +8,4 @@ include_directories(.)
 set(SOURCE_FILES main.c)
 
 add_executable(paranoid ${SOURCE_FILES})
-target_link_libraries(paranoid pthread cap seccomp)
+target_link_libraries(paranoid pthread cap seccomp cgroup)
