@@ -5,26 +5,6 @@ set(CMAKE_C_STANDARD 99)
 
 include_directories(
         src/include
-        vendor/libcap/libcap/include
-)
-
-set(
-        LIBCAP_SOURCE_FILES
-
-        vendor/libcap/libcap/libcap.h
-        vendor/libcap/libcap/cap_names.h
-        vendor/libcap/libcap/cap_alloc.c
-        vendor/libcap/libcap/cap_extint.c
-        vendor/libcap/libcap/cap_file.c
-        vendor/libcap/libcap/cap_flag.c
-        vendor/libcap/libcap/cap_proc.c
-        vendor/libcap/libcap/cap_text.c
-)
-
-add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcap/libcap/cap_names.h
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcap/libcap
-        COMMAND make cap_names.h
 )
 
 set(
@@ -61,6 +41,6 @@ set(
         src/container/userns.c
 )
 
-add_executable(paranoid ${LIBSECCOMP_SOURCE_FILES} ${LIBCAP_SOURCE_FILES} ${CONTAINER_SOURCE_FILES} src/paraniod.c)
+add_executable(paranoid ${CONTAINER_SOURCE_FILES} src/paraniod.c)
 
-target_link_libraries(paranoid pthread cgroup)
+target_link_libraries(paranoid pthread cap seccomp cgroup)
