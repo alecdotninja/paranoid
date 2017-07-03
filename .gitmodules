@@ -4,3 +4,6 @@
 [submodule "vendor/libcgroup"]
 	path = vendor/libcgroup
 	url = https://github.com/matsumotory/libcgroup
+[submodule "vendor/libseccomp"]
+	path = vendor/libseccomp
+	url = https://github.com/seccomp/libseccomp.git
