@@ -49,15 +49,6 @@ set(
         vendor/lwip/src/core/ipv4/ip4_addr.c
         vendor/lwip/src/core/ipv4/ip4.c
         vendor/lwip/src/core/ipv4/ip4_frag.c
-        vendor/lwip/src/core/ipv6/dhcp6.c
-        vendor/lwip/src/core/ipv6/ethip6.c
-        vendor/lwip/src/core/ipv6/icmp6.c
-        vendor/lwip/src/core/ipv6/inet6.c
-        vendor/lwip/src/core/ipv6/ip6_addr.c
-        vendor/lwip/src/core/ipv6/ip6.c
-        vendor/lwip/src/core/ipv6/ip6_frag.c
-        vendor/lwip/src/core/ipv6/mld6.c
-        vendor/lwip/src/core/ipv6/nd6.c
         vendor/lwip/src/core/mem.c
         vendor/lwip/src/core/memp.c
         vendor/lwip/src/core/netif.c
@@ -160,7 +151,6 @@ set(
         vendor/lwip/src/include/netif/ppp/eui64.h
         vendor/lwip/src/include/netif/ppp/fsm.h
         vendor/lwip/src/include/netif/ppp/ipcp.h
-        vendor/lwip/src/include/netif/ppp/ipv6cp.h
         vendor/lwip/src/include/netif/ppp/lcp.h
         vendor/lwip/src/include/netif/ppp/magic.h
         vendor/lwip/src/include/netif/ppp/mppe.h
@@ -200,7 +190,6 @@ set(
         vendor/lwip/src/netif/ppp/eui64.c
         vendor/lwip/src/netif/ppp/fsm.c
         vendor/lwip/src/netif/ppp/ipcp.c
-        vendor/lwip/src/netif/ppp/ipv6cp.c
         vendor/lwip/src/netif/ppp/lcp.c
         vendor/lwip/src/netif/ppp/magic.c
         vendor/lwip/src/netif/ppp/mppe.c
@@ -253,7 +242,7 @@ set(
 
         src/include/container/userns.h
         src/container/userns.c
-)
+        src/lwip/tunif.c)
 
 add_executable(paranoid ${LWIP_SOURCE_FILES} ${CONTAINER_SOURCE_FILES} src/paraniod.c)
 target_link_libraries(paranoid pthread)
