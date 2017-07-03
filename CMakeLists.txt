@@ -3,6 +3,30 @@ project(paranoid)
 
 set(CMAKE_C_STANDARD 99)
 
+include_directories(
+        src/include
+        vendor/cap/libcap/include
+)
+
+add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cap/libcap/cap_names.h
+        COMMAND make cap_names.h
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cap/libcap
+)
+
+set(
+        CAP_SOURCE_FILES
+
+        vendor/cap/libcap/libcap.h
+        vendor/cap/libcap/cap_names.h
+        vendor/cap/libcap/cap_alloc.c
+        vendor/cap/libcap/cap_extint.c
+        vendor/cap/libcap/cap_file.c
+        vendor/cap/libcap/cap_flag.c
+        vendor/cap/libcap/cap_proc.c
+        vendor/cap/libcap/cap_text.c
+)
+
 set(
         CONTAINER_SOURCE_FILES
 
@@ -37,7 +61,6 @@ set(
         src/container/userns.c
 )
 
-include_directories(src/include)
+add_executable(paranoid ${CAP_SOURCE_FILES} ${CONTAINER_SOURCE_FILES} src/paraniod.c)
 
-add_executable(paranoid ${CONTAINER_SOURCE_FILES} src/paraniod.c)
-target_link_libraries(paranoid pthread cap seccomp cgroup)
+target_link_libraries(paranoid pthread seccomp cgroup)
