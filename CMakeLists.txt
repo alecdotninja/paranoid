@@ -6,6 +6,7 @@ set(CMAKE_C_STANDARD 99)
 include_directories(
         src/include
         vendor/lwip/src/include
+        vendor/libcgroup/include
 )
 
 set(
@@ -252,6 +253,15 @@ set(
         src/container/userns.c
 )
 
+add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libcgroup.a
+        COMMAND autoreconf -fi && ./configure --enable-static && make && cp src/.libs/libcgroup.a ${CMAKE_CURRENT_BINARY_DIR}/libcgroup.a
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcgroup
+)
+
+add_custom_target(libcgroup-static DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libcgroup.a)
+
 add_executable(paranoid ${LWIP_SOURCE_FILES} ${CONTAINER_SOURCE_FILES} src/paraniod.c)
 
-target_link_libraries(paranoid pthread cap seccomp cgroup)
+add_dependencies(paranoid libcgroup-static)
+target_link_libraries(paranoid pthread cap.a seccomp.a ${CMAKE_CURRENT_BINARY_DIR}/libcgroup.a)

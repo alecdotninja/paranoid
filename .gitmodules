@@ -1,3 +1,6 @@
 [submodule "vendor/lwip"]
 	path = vendor/lwip
 	url = https://git.savannah.gnu.org/git/lwip.git
+[submodule "vendor/libcgroup"]
+	path = vendor/libcgroup
+	url = https://github.com/matsumotory/libcgroup
