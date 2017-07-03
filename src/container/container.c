@@ -34,7 +34,7 @@ int child_main(container_t *container) {
     container_initialize_fs_namespace(container);
 
     drop_unsafe_capabilities();
-    disable_unsafe_syscalls();
+//    disable_unsafe_syscalls();
 
     container_child_setup_tty(container);
 

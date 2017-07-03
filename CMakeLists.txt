@@ -8,14 +8,8 @@ include_directories(
         vendor/libcap/libcap/include
 )
 
-add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcap/libcap/cap_names.h
-        COMMAND make cap_names.h
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcap/libcap
-)
-
 set(
-        CAP_SOURCE_FILES
+        LIBCAP_SOURCE_FILES
 
         vendor/libcap/libcap/libcap.h
         vendor/libcap/libcap/cap_names.h
@@ -25,6 +19,12 @@ set(
         vendor/libcap/libcap/cap_flag.c
         vendor/libcap/libcap/cap_proc.c
         vendor/libcap/libcap/cap_text.c
+)
+
+add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcap/libcap/cap_names.h
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcap/libcap
+        COMMAND make cap_names.h
 )
 
 set(
@@ -61,6 +61,6 @@ set(
         src/container/userns.c
 )
 
-add_executable(paranoid ${CAP_SOURCE_FILES} ${CONTAINER_SOURCE_FILES} src/paraniod.c)
+add_executable(paranoid ${LIBSECCOMP_SOURCE_FILES} ${LIBCAP_SOURCE_FILES} ${CONTAINER_SOURCE_FILES} src/paraniod.c)
 
-target_link_libraries(paranoid pthread seccomp cgroup)
+target_link_libraries(paranoid pthread cgroup)
