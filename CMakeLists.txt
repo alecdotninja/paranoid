@@ -5,26 +5,26 @@ set(CMAKE_C_STANDARD 99)
 
 include_directories(
         src/include
-        vendor/cap/libcap/include
+        vendor/libcap/libcap/include
 )
 
 add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cap/libcap/cap_names.h
+        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcap/libcap/cap_names.h
         COMMAND make cap_names.h
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cap/libcap
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcap/libcap
 )
 
 set(
         CAP_SOURCE_FILES
 
-        vendor/cap/libcap/libcap.h
-        vendor/cap/libcap/cap_names.h
-        vendor/cap/libcap/cap_alloc.c
-        vendor/cap/libcap/cap_extint.c
-        vendor/cap/libcap/cap_file.c
-        vendor/cap/libcap/cap_flag.c
-        vendor/cap/libcap/cap_proc.c
-        vendor/cap/libcap/cap_text.c
+        vendor/libcap/libcap/libcap.h
+        vendor/libcap/libcap/cap_names.h
+        vendor/libcap/libcap/cap_alloc.c
+        vendor/libcap/libcap/cap_extint.c
+        vendor/libcap/libcap/cap_file.c
+        vendor/libcap/libcap/cap_flag.c
+        vendor/libcap/libcap/cap_proc.c
+        vendor/libcap/libcap/cap_text.c
 )
 
 set(

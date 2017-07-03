@@ -1,6 +1,6 @@
 [submodule "vendor/lwip"]
 	path = vendor/lwip
 	url = https://git.savannah.gnu.org/git/lwip.git
-[submodule "vendor/cap"]
-	path = vendor/cap
+[submodule "vendor/libcap"]
+	path = vendor/libcap
 	url = https://git.kernel.org/pub/scm/linux/kernel/git/morgan/libcap.git
