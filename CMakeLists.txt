@@ -8,6 +8,7 @@ include_directories(
         vendor/lwip/src/include
         vendor/libcgroup/include
         vendor/libseccomp/include
+        vendor/libcap/libcap/include
 )
 
 set(
@@ -255,7 +256,7 @@ set(
 )
 
 add_executable(paranoid ${LWIP_SOURCE_FILES} ${CONTAINER_SOURCE_FILES} src/paraniod.c)
-target_link_libraries(paranoid pthread cap.a)
+target_link_libraries(paranoid pthread)
 
 add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libcgroup.a
@@ -265,8 +266,8 @@ add_custom_command(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcgroup
 )
 
-add_custom_target(libcgroup-static DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libcgroup.a)
-add_dependencies(paranoid libcgroup-static)
+add_custom_target(libcgroup DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libcgroup.a)
+add_dependencies(paranoid libcgroup)
 target_link_libraries(paranoid ${CMAKE_CURRENT_BINARY_DIR}/libcgroup.a)
 
 add_custom_command(
@@ -278,8 +279,17 @@ add_custom_command(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libseccomp
 )
 
-add_custom_target(libseccomp-static DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libseccomp.a)
-add_dependencies(paranoid libseccomp-static)
+add_custom_target(libseccomp DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libseccomp.a)
+add_dependencies(paranoid libseccomp)
 target_link_libraries(paranoid ${CMAKE_CURRENT_BINARY_DIR}/libseccomp.a)
 
+add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libcap.a
+        COMMAND make
+        COMMAND cp libcap/libcap.a ${CMAKE_CURRENT_BINARY_DIR}/libcap.a
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcap
+)
 
+add_custom_target(libcap DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libcap.a)
+add_dependencies(paranoid libcap)
+target_link_libraries(paranoid ${CMAKE_CURRENT_BINARY_DIR}/libcap.a)
