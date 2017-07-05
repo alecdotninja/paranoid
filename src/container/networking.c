@@ -46,13 +46,14 @@ void container_initialize_network_namespace(container_t *container) {
         exit(EXIT_FAILURE);
     }
 
+    system("ip link set dev lo up");
+    system("ip link set dev eth0 up");
+    system("ip addr add 10.0.15.2 dev eth0");
+    system("ip route add 10.0.15.0/24 dev eth0");
+    system("ip route add default via 10.0.15.1");
+
     if(send_fd(container->child_signaling_fd, tap_fd) < 0) {
         fprintf(stderr, "[!] Failed to send eth0 outside of the container\n");
-        exit(EXIT_FAILURE);
-    }
-
-    if(receive_message(container->child_signaling_fd) < 0) {
-        fprintf(stderr, "[!] Failed to wait for parent to take ownership of eth0\n");
         exit(EXIT_FAILURE);
     }
 
@@ -60,12 +61,6 @@ void container_initialize_network_namespace(container_t *container) {
         fprintf(stderr, "[!] Failed to abandon eth0\n");
         exit(EXIT_FAILURE);
     }
-
-    system("ip link set dev lo up");
-    system("ip link set dev eth0 up");
-    system("ip addr add 10.0.15.2 dev eth0");
-    system("ip route add 10.0.15.0/24 dev eth0");
-    system("ip route add default via 10.0.15.1");
 }
 
 void container_spawn_network_relay(container_t *container) {
@@ -79,6 +74,4 @@ void container_spawn_network_relay(container_t *container) {
         fprintf(stderr, "[!] Failed to spawn network relay.\n");
         exit(EXIT_FAILURE);
     }
-
-    send_message(container->parent_signaling_fd, 0);
 }
