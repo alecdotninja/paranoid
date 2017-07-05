@@ -1,8 +1,6 @@
 #ifndef PARANOID_CONTAINER_H
 #define PARANOID_CONTAINER_H
 
-#include "sched.h"
-
 typedef struct __container {
     pid_t child_pid;
     int parent_signaling_fd;

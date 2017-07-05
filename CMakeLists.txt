@@ -6,36 +6,25 @@ set(CMAKE_C_STANDARD 99)
 include_directories(
         src/include
         vendor/lwip/src/include
+        vendor/lwip-contrib/ports/unix/port/include
         vendor/libcgroup/include
         vendor/libseccomp/include
         vendor/libcap/libcap/include
 )
 
 set(
-        LWIP_CONIFG_FILES
-
-        src/include/lwipopts.h
-        src/include/arch/cc.h
-        src/include/arch/perf.h
-        src/lwip/arch.c
-)
-
-set(
         LWIP_SOURCE_FILES
 
-        ${LWIP_CONIFG_FILES}
+        src/include/lwipopts.h
 
         vendor/lwip/src/api/api_lib.c
         vendor/lwip/src/api/api_msg.c
         vendor/lwip/src/api/err.c
-        vendor/lwip/src/api/if_api.c
         vendor/lwip/src/api/netbuf.c
         vendor/lwip/src/api/netdb.c
         vendor/lwip/src/api/netifapi.c
         vendor/lwip/src/api/sockets.c
         vendor/lwip/src/api/tcpip.c
-        vendor/lwip/src/core/altcp.c
-        vendor/lwip/src/core/altcp_tcp.c
         vendor/lwip/src/core/def.c
         vendor/lwip/src/core/dns.c
         vendor/lwip/src/core/inet_chksum.c
@@ -49,6 +38,15 @@ set(
         vendor/lwip/src/core/ipv4/ip4_addr.c
         vendor/lwip/src/core/ipv4/ip4.c
         vendor/lwip/src/core/ipv4/ip4_frag.c
+        vendor/lwip/src/core/ipv6/dhcp6.c
+        vendor/lwip/src/core/ipv6/ethip6.c
+        vendor/lwip/src/core/ipv6/icmp6.c
+        vendor/lwip/src/core/ipv6/inet6.c
+        vendor/lwip/src/core/ipv6/ip6_addr.c
+        vendor/lwip/src/core/ipv6/ip6.c
+        vendor/lwip/src/core/ipv6/ip6_frag.c
+        vendor/lwip/src/core/ipv6/mld6.c
+        vendor/lwip/src/core/ipv6/nd6.c
         vendor/lwip/src/core/mem.c
         vendor/lwip/src/core/memp.c
         vendor/lwip/src/core/netif.c
@@ -61,9 +59,6 @@ set(
         vendor/lwip/src/core/tcp_out.c
         vendor/lwip/src/core/timeouts.c
         vendor/lwip/src/core/udp.c
-        vendor/lwip/src/include/lwip/altcp.h
-        vendor/lwip/src/include/lwip/altcp_tcp.h
-        vendor/lwip/src/include/lwip/altcp_tls.h
         vendor/lwip/src/include/lwip/api.h
         vendor/lwip/src/include/lwip/arch.h
         vendor/lwip/src/include/lwip/autoip.h
@@ -78,7 +73,6 @@ set(
         vendor/lwip/src/include/lwip/ethip6.h
         vendor/lwip/src/include/lwip/icmp6.h
         vendor/lwip/src/include/lwip/icmp.h
-        vendor/lwip/src/include/lwip/if_api.h
         vendor/lwip/src/include/lwip/igmp.h
         vendor/lwip/src/include/lwip/inet_chksum.h
         vendor/lwip/src/include/lwip/inet.h
@@ -89,7 +83,6 @@ set(
         vendor/lwip/src/include/lwip/ip6_addr.h
         vendor/lwip/src/include/lwip/ip6_frag.h
         vendor/lwip/src/include/lwip/ip6.h
-        vendor/lwip/src/include/lwip/ip6_zone.h
         vendor/lwip/src/include/lwip/ip_addr.h
         vendor/lwip/src/include/lwip/ip.h
         vendor/lwip/src/include/lwip/mem.h
@@ -102,12 +95,10 @@ set(
         vendor/lwip/src/include/lwip/netif.h
         vendor/lwip/src/include/lwip/opt.h
         vendor/lwip/src/include/lwip/pbuf.h
-        vendor/lwip/src/include/lwip/priv/altcp_priv.h
         vendor/lwip/src/include/lwip/priv/api_msg.h
         vendor/lwip/src/include/lwip/priv/memp_priv.h
         vendor/lwip/src/include/lwip/priv/memp_std.h
         vendor/lwip/src/include/lwip/priv/nd6_priv.h
-        vendor/lwip/src/include/lwip/priv/sockets_priv.h
         vendor/lwip/src/include/lwip/priv/tcpip_priv.h
         vendor/lwip/src/include/lwip/priv/tcp_priv.h
         vendor/lwip/src/include/lwip/prot/autoip.h
@@ -131,13 +122,10 @@ set(
         vendor/lwip/src/include/lwip/sockets.h
         vendor/lwip/src/include/lwip/stats.h
         vendor/lwip/src/include/lwip/sys.h
-        vendor/lwip/src/include/lwip/tcpbase.h
         vendor/lwip/src/include/lwip/tcp.h
         vendor/lwip/src/include/lwip/tcpip.h
         vendor/lwip/src/include/lwip/timeouts.h
         vendor/lwip/src/include/lwip/udp.h
-        vendor/lwip/src/include/netif/bridgeif.h
-        vendor/lwip/src/include/netif/bridgeif_opts.h
         vendor/lwip/src/include/netif/etharp.h
         vendor/lwip/src/include/netif/ethernet.h
         vendor/lwip/src/include/netif/lowpan6.h
@@ -151,6 +139,7 @@ set(
         vendor/lwip/src/include/netif/ppp/eui64.h
         vendor/lwip/src/include/netif/ppp/fsm.h
         vendor/lwip/src/include/netif/ppp/ipcp.h
+        vendor/lwip/src/include/netif/ppp/ipv6cp.h
         vendor/lwip/src/include/netif/ppp/lcp.h
         vendor/lwip/src/include/netif/ppp/magic.h
         vendor/lwip/src/include/netif/ppp/mppe.h
@@ -170,12 +159,9 @@ set(
         vendor/lwip/src/include/netif/ppp/pppos.h
         vendor/lwip/src/include/netif/ppp/upap.h
         vendor/lwip/src/include/netif/ppp/vj.h
-        vendor/lwip/src/include/posix/arpa/inet.h
         vendor/lwip/src/include/posix/errno.h
         vendor/lwip/src/include/posix/netdb.h
-        vendor/lwip/src/include/posix/net/if.h
         vendor/lwip/src/include/posix/sys/socket.h
-        vendor/lwip/src/netif/bridgeif.c
         vendor/lwip/src/netif/ethernet.c
         vendor/lwip/src/netif/ethernetif.c
         vendor/lwip/src/netif/lowpan6.c
@@ -190,6 +176,7 @@ set(
         vendor/lwip/src/netif/ppp/eui64.c
         vendor/lwip/src/netif/ppp/fsm.c
         vendor/lwip/src/netif/ppp/ipcp.c
+        vendor/lwip/src/netif/ppp/ipv6cp.c
         vendor/lwip/src/netif/ppp/lcp.c
         vendor/lwip/src/netif/ppp/magic.c
         vendor/lwip/src/netif/ppp/mppe.c
@@ -208,6 +195,31 @@ set(
         vendor/lwip/src/netif/ppp/upap.c
         vendor/lwip/src/netif/ppp/utils.c
         vendor/lwip/src/netif/ppp/vj.c
+
+        vendor/lwip-contrib/ports/unix/port/include/arch/cc.h
+        vendor/lwip-contrib/ports/unix/port/include/arch/perf.h
+        vendor/lwip-contrib/ports/unix/port/include/arch/sys_arch.h
+        vendor/lwip-contrib/ports/unix/port/include/netif/delif.h
+        vendor/lwip-contrib/ports/unix/port/include/netif/dropif.h
+        vendor/lwip-contrib/ports/unix/port/include/netif/fifo.h
+        vendor/lwip-contrib/ports/unix/port/include/netif/list.h
+        vendor/lwip-contrib/ports/unix/port/include/netif/pcapif.h
+        vendor/lwip-contrib/ports/unix/port/include/netif/sio.h
+        vendor/lwip-contrib/ports/unix/port/include/netif/tapif.h
+        vendor/lwip-contrib/ports/unix/port/include/netif/tcpdump.h
+        vendor/lwip-contrib/ports/unix/port/include/netif/tunif.h
+        vendor/lwip-contrib/ports/unix/port/include/netif/unixif.h
+        vendor/lwip-contrib/ports/unix/port/netif/delif.c
+        vendor/lwip-contrib/ports/unix/port/netif/fifo.c
+        vendor/lwip-contrib/ports/unix/port/netif/list.c
+        vendor/lwip-contrib/ports/unix/port/netif/pcapif.c
+        vendor/lwip-contrib/ports/unix/port/netif/sio.c
+        vendor/lwip-contrib/ports/unix/port/netif/tapif.c
+        vendor/lwip-contrib/ports/unix/port/netif/tcpdump.c
+        vendor/lwip-contrib/ports/unix/port/netif/tunif.c
+        vendor/lwip-contrib/ports/unix/port/netif/unixif.c
+        vendor/lwip-contrib/ports/unix/port/perf.c
+        vendor/lwip-contrib/ports/unix/port/sys_arch.c
 )
 
 set(
@@ -242,7 +254,7 @@ set(
 
         src/include/container/userns.h
         src/container/userns.c
-        src/lwip/tunif.c)
+)
 
 add_executable(paranoid ${LWIP_SOURCE_FILES} ${CONTAINER_SOURCE_FILES} src/paraniod.c)
 target_link_libraries(paranoid pthread)
