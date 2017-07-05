@@ -5,8 +5,10 @@ set(CMAKE_C_STANDARD 99)
 
 include_directories(
         src/include
+
         vendor/lwip/src/include
         vendor/lwip-contrib/ports/unix/port/include
+
         vendor/libcgroup/include
         vendor/libseccomp/include
         vendor/libcap/libcap/include
@@ -16,6 +18,9 @@ set(
         LWIP_SOURCE_FILES
 
         src/include/lwipopts.h
+
+        src/include/netif/tapif.h
+        src/netif/tapif.c
 
         vendor/lwip/src/api/api_lib.c
         vendor/lwip/src/api/api_msg.c
@@ -199,25 +204,6 @@ set(
         vendor/lwip-contrib/ports/unix/port/include/arch/cc.h
         vendor/lwip-contrib/ports/unix/port/include/arch/perf.h
         vendor/lwip-contrib/ports/unix/port/include/arch/sys_arch.h
-        vendor/lwip-contrib/ports/unix/port/include/netif/delif.h
-        vendor/lwip-contrib/ports/unix/port/include/netif/dropif.h
-        vendor/lwip-contrib/ports/unix/port/include/netif/fifo.h
-        vendor/lwip-contrib/ports/unix/port/include/netif/list.h
-        vendor/lwip-contrib/ports/unix/port/include/netif/pcapif.h
-        vendor/lwip-contrib/ports/unix/port/include/netif/sio.h
-        vendor/lwip-contrib/ports/unix/port/include/netif/tapif.h
-        vendor/lwip-contrib/ports/unix/port/include/netif/tcpdump.h
-        vendor/lwip-contrib/ports/unix/port/include/netif/tunif.h
-        vendor/lwip-contrib/ports/unix/port/include/netif/unixif.h
-        vendor/lwip-contrib/ports/unix/port/netif/delif.c
-        vendor/lwip-contrib/ports/unix/port/netif/fifo.c
-        vendor/lwip-contrib/ports/unix/port/netif/list.c
-        vendor/lwip-contrib/ports/unix/port/netif/pcapif.c
-        vendor/lwip-contrib/ports/unix/port/netif/sio.c
-        vendor/lwip-contrib/ports/unix/port/netif/tapif.c
-        vendor/lwip-contrib/ports/unix/port/netif/tcpdump.c
-        vendor/lwip-contrib/ports/unix/port/netif/tunif.c
-        vendor/lwip-contrib/ports/unix/port/netif/unixif.c
         vendor/lwip-contrib/ports/unix/port/perf.c
         vendor/lwip-contrib/ports/unix/port/sys_arch.c
 )
@@ -233,6 +219,9 @@ set(
 
         src/include/container/init.h
         src/container/init.c
+
+        src/include/container/network_relay.h
+        src/container/network_relay.c
 
         src/include/container/networking.h
         src/container/networking.c
