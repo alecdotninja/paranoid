@@ -51,7 +51,7 @@ void *do_network_relay(void *data) {
 
     struct tcp_pcb *listener = tcp_new();
     tcp_arg(listener, network_relay);
-    tcp_bind(listener, IP_ADDR_ANY, 1);
+    tcp_bind(listener, IP_ADDR_ANY, 0);
     listener = tcp_listen(listener);
     tcp_accept(listener, network_relay_tcp_accept);
 

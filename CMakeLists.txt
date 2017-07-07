@@ -22,6 +22,9 @@ set(
         src/include/netif/tapif.h
         src/netif/tapif.c
 
+        src/lwip/core/tcp_in.c
+        src/lwip/core/tcp.c
+
         vendor/lwip/src/api/api_lib.c
         vendor/lwip/src/api/api_msg.c
         vendor/lwip/src/api/err.c
@@ -59,8 +62,6 @@ set(
         vendor/lwip/src/core/raw.c
         vendor/lwip/src/core/stats.c
         vendor/lwip/src/core/sys.c
-        vendor/lwip/src/core/tcp.c
-        vendor/lwip/src/core/tcp_in.c
         vendor/lwip/src/core/tcp_out.c
         vendor/lwip/src/core/timeouts.c
         vendor/lwip/src/core/udp.c
@@ -252,6 +253,7 @@ add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libcgroup.a
         COMMAND autoreconf -fi
         COMMAND ./configure --enable-static
+        COMMAND make
         COMMAND cp src/.libs/libcgroup.a ${CMAKE_CURRENT_BINARY_DIR}/libcgroup.a
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libcgroup
 )
