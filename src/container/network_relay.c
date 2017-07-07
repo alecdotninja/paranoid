@@ -11,8 +11,22 @@
 #include <netif/tapif.h>
 #include <netif/etharp.h>
 #include <lwip/timeouts.h>
+#include <lwip/tcp.h>
 
 #include "container/network_relay.h"
+
+
+err_t network_relay_tcp_accept(void *data, struct tcp_pcb *connection, err_t err) {
+//    network_relay_t *network_relay = data;
+
+    const char *message = "Hello, world!\n";
+
+    tcp_write(connection, message, sizeof(message), TCP_WRITE_FLAG_COPY);
+    tcp_output(connection);
+    tcp_close(connection);
+
+    return ERR_OK;
+}
 
 void *do_network_relay(void *data) {
     network_relay_t *network_relay = data;
@@ -34,6 +48,12 @@ void *do_network_relay(void *data) {
     netif_add(&netif, &ipaddr, &netmask, NULL, &tapif, tapif_init, ethernet_input);
     netif_set_default(&netif);
     netif_set_up(&netif);
+
+    struct tcp_pcb *listener = tcp_new();
+    tcp_arg(listener, network_relay);
+    tcp_bind(listener, IP_ADDR_ANY, 1);
+    listener = tcp_listen(listener);
+    tcp_accept(listener, network_relay_tcp_accept);
 
     while (1) {
         tapif_select(&netif);
