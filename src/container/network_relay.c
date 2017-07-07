@@ -12,6 +12,7 @@
 #include <netif/etharp.h>
 #include <lwip/timeouts.h>
 #include <lwip/tcp.h>
+#include <memory.h>
 
 #include "container/network_relay.h"
 
@@ -19,10 +20,19 @@
 err_t network_relay_tcp_accept(void *data, struct tcp_pcb *connection, err_t err) {
 //    network_relay_t *network_relay = data;
 
-    const char *message = "Hello, world!\n";
+    char buffer[2048];
 
-    tcp_write(connection, message, sizeof(message), TCP_WRITE_FLAG_COPY);
+    snprintf(buffer, sizeof(buffer), "Hello there from %i.%i.%i.%i:%i!\n",
+             ip4_addr1(&connection->local_ip),
+             ip4_addr2(&connection->local_ip),
+             ip4_addr3(&connection->local_ip),
+             ip4_addr4(&connection->local_ip),
+             connection->local_port
+    );
+
+    tcp_write(connection, buffer, strlen(buffer), TCP_WRITE_FLAG_COPY);
     tcp_output(connection);
+
     tcp_close(connection);
 
     return ERR_OK;
@@ -40,12 +50,13 @@ void *do_network_relay(void *data) {
 
     struct netif netif;
 
-    ip4_addr_t ipaddr, netmask;
+    ip4_addr_t ipaddr, netmask, gw;
 
+    IP4_ADDR(&gw, 10,0,15,1);
     IP4_ADDR(&ipaddr, 10,0,15,1);
     IP4_ADDR(&netmask, 255,255,255,0);
 
-    netif_add(&netif, &ipaddr, &netmask, NULL, &tapif, tapif_init, ethernet_input);
+    netif_add(&netif, &ipaddr, &netmask, &gw, &tapif, tapif_init, ethernet_input);
     netif_set_default(&netif);
     netif_set_up(&netif);
 

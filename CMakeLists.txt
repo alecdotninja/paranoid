@@ -22,6 +22,7 @@ set(
         src/include/netif/tapif.h
         src/netif/tapif.c
 
+        src/lwip/core/ipv4/ip4.c
         src/lwip/core/tcp_in.c
         src/lwip/core/tcp.c
 
@@ -44,7 +45,6 @@ set(
         vendor/lwip/src/core/ipv4/icmp.c
         vendor/lwip/src/core/ipv4/igmp.c
         vendor/lwip/src/core/ipv4/ip4_addr.c
-        vendor/lwip/src/core/ipv4/ip4.c
         vendor/lwip/src/core/ipv4/ip4_frag.c
         vendor/lwip/src/core/ipv6/dhcp6.c
         vendor/lwip/src/core/ipv6/ethip6.c
