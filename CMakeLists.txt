@@ -25,6 +25,8 @@ set(
         src/lwip/core/ipv4/ip4.c
         src/lwip/core/tcp_in.c
         src/lwip/core/tcp.c
+        src/include/lwip/udp.h
+        src/lwip/core/udp.c
 
         vendor/lwip/src/api/api_lib.c
         vendor/lwip/src/api/api_msg.c
@@ -64,7 +66,6 @@ set(
         vendor/lwip/src/core/sys.c
         vendor/lwip/src/core/tcp_out.c
         vendor/lwip/src/core/timeouts.c
-        vendor/lwip/src/core/udp.c
         vendor/lwip/src/include/lwip/api.h
         vendor/lwip/src/include/lwip/arch.h
         vendor/lwip/src/include/lwip/autoip.h
@@ -131,7 +132,6 @@ set(
         vendor/lwip/src/include/lwip/tcp.h
         vendor/lwip/src/include/lwip/tcpip.h
         vendor/lwip/src/include/lwip/timeouts.h
-        vendor/lwip/src/include/lwip/udp.h
         vendor/lwip/src/include/netif/etharp.h
         vendor/lwip/src/include/netif/ethernet.h
         vendor/lwip/src/include/netif/lowpan6.h

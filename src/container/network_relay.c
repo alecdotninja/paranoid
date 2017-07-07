@@ -13,29 +13,43 @@
 #include <lwip/timeouts.h>
 #include <lwip/tcp.h>
 #include <memory.h>
+#include <lwip/udp.h>
 
 #include "container/network_relay.h"
 
 
 err_t network_relay_tcp_accept(void *data, struct tcp_pcb *connection, err_t err) {
-//    network_relay_t *network_relay = data;
+    network_relay_t *network_relay = data;
 
-    char buffer[2048];
-
-    snprintf(buffer, sizeof(buffer), "Hello there from %i.%i.%i.%i:%i!\n",
-             ip4_addr1(&connection->local_ip),
-             ip4_addr2(&connection->local_ip),
-             ip4_addr3(&connection->local_ip),
-             ip4_addr4(&connection->local_ip),
-             connection->local_port
-    );
-
-    tcp_write(connection, buffer, strlen(buffer), TCP_WRITE_FLAG_COPY);
-    tcp_output(connection);
+    fprintf(stderr, "[*] TCP %i.%i.%i.%i:%i\n", ip4_addr1(&connection->local_ip), ip4_addr2(&connection->local_ip),
+            ip4_addr3(&connection->local_ip), ip4_addr4(&connection->local_ip), connection->local_port);
 
     tcp_close(connection);
 
     return ERR_OK;
+}
+
+void network_relay_udp_recv(void *data, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *remote_ip, u16_t remote_port, const ip_addr_t *local_ip, u16_t local_port) {
+    network_relay_t *network_relay = data;
+
+    pbuf_free(p);
+
+    fprintf(stderr, "[*] UDP %i.%i.%i.%i:%i\n", ip4_addr1(local_ip), ip4_addr2(local_ip),
+            ip4_addr3(local_ip), ip4_addr4(local_ip), local_port);
+}
+
+void network_relay_init_tcp(network_relay_t *network_relay) {
+    struct tcp_pcb *tcp_listener = tcp_new();
+    tcp_arg(tcp_listener, network_relay);
+    tcp_bind(tcp_listener, IP_ADDR_ANY, 0);
+    tcp_listener = tcp_listen(tcp_listener);
+    tcp_accept(tcp_listener, network_relay_tcp_accept);
+}
+
+void network_relay_init_upd(network_relay_t *network_relay) {
+    struct udp_pcb *udp_listener = udp_new();
+    udp_bind(udp_listener, IP_ADDR_ANY, 0);
+    udp_recv(udp_listener, network_relay_udp_recv, network_relay);
 }
 
 void *do_network_relay(void *data) {
@@ -60,11 +74,8 @@ void *do_network_relay(void *data) {
     netif_set_default(&netif);
     netif_set_up(&netif);
 
-    struct tcp_pcb *listener = tcp_new();
-    tcp_arg(listener, network_relay);
-    tcp_bind(listener, IP_ADDR_ANY, 0);
-    listener = tcp_listen(listener);
-    tcp_accept(listener, network_relay_tcp_accept);
+    network_relay_init_tcp(network_relay);
+    network_relay_init_upd(network_relay);
 
     while (1) {
         tapif_select(&netif);
