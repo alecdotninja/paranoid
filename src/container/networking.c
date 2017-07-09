@@ -72,7 +72,13 @@ void container_spawn_network_relay(container_t *container) {
         exit(EXIT_FAILURE);
     }
 
-    if(spawn_network_relay(tap_fd, inet_addr("10.0.15.1"), inet_addr("255.255.255.0")) == NULL) {
+    ip_addr_t ip;
+    ip_addr_t netmask;
+
+    IP4_ADDR(&ip, 10,0,15,1);
+    IP4_ADDR(&netmask, 255,255,255,0);
+
+    if(spawn_network_relay(tap_fd, &ip, &netmask) == NULL) {
         fprintf(stderr, "[!] Failed to spawn network relay.\n");
         exit(EXIT_FAILURE);
     }

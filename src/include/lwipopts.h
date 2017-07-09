@@ -44,6 +44,8 @@
    -----------------------------------------------
 */
 
+#define LWIP_TCP_KEEPALIVE 1
+
 /**
  * NO_SYS==1: Provides VERY minimal functionality. Otherwise,
  * use lwIP facilities.

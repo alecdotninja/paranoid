@@ -9,13 +9,25 @@
 #include <lwip/tcp.h>
 #include <lwip/udp.h>
 #include <pthread.h>
+#include <stdbool.h>
+
+typedef struct network_relay_tcp_connection {
+    struct network_relay_tcp_connection *next;
+
+    int socket_fd;
+    struct tcp_pcb *pcb;
+
+    char buffer[BUFSIZ];
+    size_t buffer_size;
+    bool is_flushed;
+} network_relay_tcp_connection_t;
 
 typedef struct network_relay_udp_connection {
     struct network_relay_udp_connection *next;
 
-    u32_t local_address;
+    ip_addr_t local_address;
     u16_t local_port;
-    u32_t remote_address;
+    ip_addr_t remote_address;
     u16_t remote_port;
 
     int socket_fd;
@@ -37,8 +49,9 @@ typedef struct network_relay {
     struct udp_pcb *udp_listener;
 
     network_relay_udp_connection_t *udp_connection;
+    network_relay_tcp_connection_t *tcp_connection;
 } network_relay_t;
 
-network_relay_t *spawn_network_relay(int tap_fd, in_addr_t ip, in_addr_t netmask);
+network_relay_t *spawn_network_relay(int tap_fd, const ip_addr_t *ip, const ip_addr_t *netmask);
 
 #endif //PARANOID_NETWORK_RELAY_H
