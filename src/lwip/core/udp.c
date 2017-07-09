@@ -897,14 +897,14 @@ udp_sendto_if_src_chksum(struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *d
 #endif /* LWIP_IPV4 && IP_SOF_BROADCAST */
 
     /* if the PCB is not yet bound to a port, bind it here */
-    if (pcb->local_port == 0) {
-        LWIP_DEBUGF(UDP_DEBUG | LWIP_DBG_TRACE, ("udp_send: not yet bound to a port, binding now\n"));
-        err = udp_bind(pcb, &pcb->local_ip, pcb->local_port);
-        if (err != ERR_OK) {
-            LWIP_DEBUGF(UDP_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_LEVEL_SERIOUS, ("udp_send: forced port bind failed\n"));
-            return err;
-        }
-    }
+//    if (pcb->local_port == 0) {
+//        LWIP_DEBUGF(UDP_DEBUG | LWIP_DBG_TRACE, ("udp_send: not yet bound to a port, binding now\n"));
+//        err = udp_bind(pcb, &pcb->local_ip, pcb->local_port);
+//        if (err != ERR_OK) {
+//            LWIP_DEBUGF(UDP_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_LEVEL_SERIOUS, ("udp_send: forced port bind failed\n"));
+//            return err;
+//        }
+//    }
 
     /* not enough space to add an UDP header to first pbuf in given p chain? */
     if (pbuf_header(p, UDP_HLEN)) {
