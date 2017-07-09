@@ -8,6 +8,8 @@
 #include <stropts.h>
 #include <pty.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
@@ -70,7 +72,7 @@ void container_spawn_network_relay(container_t *container) {
         exit(EXIT_FAILURE);
     }
 
-    if(spawn_network_relay(tap_fd) == NULL) {
+    if(spawn_network_relay(tap_fd, inet_addr("10.0.15.1"), inet_addr("255.255.255.0")) == NULL) {
         fprintf(stderr, "[!] Failed to spawn network relay.\n");
         exit(EXIT_FAILURE);
     }

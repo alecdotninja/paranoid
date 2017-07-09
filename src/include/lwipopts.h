@@ -246,7 +246,7 @@
  * LWIP_ICMP==1: Enable ICMP module inside the IP stack.
  * Be careful, disable that make your product non-compliant to RFC1122
  */
-#define LWIP_ICMP                       1
+#define LWIP_ICMP                       0
 
 /**
  * ICMP_TTL: Default value for Time-To-Live used by ICMP packets.

@@ -191,7 +191,7 @@ void container_initialize_fs_namespace(container_t *container) {
     build_dev();
     build_tmp_and_run();
 
-    copy_file("/etc/resolv.conf", "./etc/resolv.conf");
+//    copy_file("/etc/resolv.conf", "./etc/resolv.conf");
 
     char old_root_path[] = "./tmp/old-root.XXXXXX";
     if(mkdtemp(old_root_path) == NULL) {

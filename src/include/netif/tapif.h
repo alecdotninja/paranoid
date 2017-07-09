@@ -44,7 +44,9 @@ struct tapif {
 
 err_t tapif_init(struct netif *netif);
 #if NO_SYS
-int tapif_select(struct netif *netif);
+void tapif_prepare_fd_set(struct netif *netif, fd_set *fd_set, int *max_fd);
+void tapif_respond_fd_set(struct netif *netif, fd_set *fd_set);
+int tapif_select(struct netif *netif, struct timeval *tv);
 #endif /* NO_SYS */
 
 #endif /* LWIP_TAPIF_H */

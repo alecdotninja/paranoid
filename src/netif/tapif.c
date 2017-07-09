@@ -294,27 +294,40 @@ tapif_init(struct netif *netif)
 /*-----------------------------------------------------------------------------------*/
 #if NO_SYS
 
-int
-tapif_select(struct netif *netif)
-{
-    fd_set fdset;
-    int ret;
-    struct timeval tv;
-    struct tapif *tapif;
-    u32_t msecs = sys_timeouts_sleeptime();
 
-    tapif = (struct tapif *)netif->state;
+void tapif_prepare_fd_set(struct netif *netif, fd_set *fd_set, int *max_fd) {
+    struct tapif *tapif = netif->state;
+    int fd = tapif->fd;
 
-    tv.tv_sec = msecs / 1000;
-    tv.tv_usec = (msecs % 1000) * 1000;
+    if(max_fd != NULL && fd > *max_fd) {
+        *max_fd = fd;
+    }
 
-    FD_ZERO(&fdset);
-    FD_SET(tapif->fd, &fdset);
+    FD_SET(fd, fd_set);
+}
 
-    ret = select(tapif->fd + 1, &fdset, NULL, NULL, &tv);
-    if (ret > 0) {
+void tapif_respond_fd_set(struct netif *netif, fd_set *fd_set) {
+    struct tapif *tapif = netif->state;
+
+    if(FD_ISSET(tapif->fd, fd_set)) {
         tapif_input(netif);
     }
+}
+
+int tapif_select(struct netif *netif, struct timeval *tv) {
+    int ret;
+
+    fd_set fd_set;
+    FD_ZERO(&fd_set);
+
+    int max_fd = 0;
+
+    tapif_prepare_fd_set(netif, &fd_set, &max_fd);
+
+    if((ret = select(max_fd + 1, &fd_set, NULL, NULL, tv)) > 0) {
+        tapif_respond_fd_set(netif, &fd_set);
+    }
+
     return ret;
 }
 
