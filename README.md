@@ -39,6 +39,7 @@ path to the init process **relative to the new rootfs**. Any additional argument
   * Cleanup networking stack so that it can support proper local bindings and IP forwarding
   * Add proper DHCP and DNS servers to the networking stack instead of pre-configuring the adapter in the container 
   * Move the networking stack into it's own process so that it can be sandboxed and shared between multiple containers
+  * Add sensible CLI interface and helpers for creating containers (extracting rootfs tars in usernamespace)
 
 ## Development
 
