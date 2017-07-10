@@ -285,3 +285,6 @@ add_custom_command(
 add_custom_target(libcap DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libcap.a)
 add_dependencies(paranoid libcap)
 target_link_libraries(paranoid ${CMAKE_CURRENT_BINARY_DIR}/libcap.a)
+
+include(GNUInstallDirs)
+install(TARGETS paranoid DESTINATION bin)

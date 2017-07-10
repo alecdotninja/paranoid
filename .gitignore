@@ -1,3 +1,11 @@
 build
 rootfs*
 cmake-build-debug
+Makefile
+CMakeCache.txt
+CMakeFiles
+*.a
+cmake_install.cmake
+install_manifest.txt
+paranoid
+paranoid.cbp
