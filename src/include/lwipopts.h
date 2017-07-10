@@ -409,6 +409,7 @@
    ---------------------------------------
 */
 
+//#define LWIP_DEBUG 1
 #define TAPIF_DEBUG      LWIP_DBG_ON
 #define TUNIF_DEBUG      LWIP_DBG_OFF
 #define UNIXIF_DEBUG     LWIP_DBG_OFF
@@ -435,8 +436,5 @@
 #define TCP_FR_DEBUG     LWIP_DBG_ON
 #define TCP_QLEN_DEBUG   LWIP_DBG_ON
 #define TCP_RST_DEBUG    LWIP_DBG_ON
-
-extern unsigned char debug_flags;
-#define LWIP_DBG_TYPES_ON debug_flags
 
 #endif /* LWIP_LWIPOPTS_H */

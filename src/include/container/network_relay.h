@@ -17,8 +17,8 @@ typedef struct network_relay_tcp_connection {
     int socket_fd;
     struct tcp_pcb *pcb;
 
-    char buffer[BUFSIZ];
-    size_t buffer_size;
+    char buffer[TCP_SND_BUF];
+    u16_t buffer_size;
     bool is_flushed;
 } network_relay_tcp_connection_t;
 

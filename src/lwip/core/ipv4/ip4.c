@@ -496,9 +496,7 @@ ip4_input(struct pbuf *p, struct netif *inp)
                 /* unicast to this interface address? */
                 if (ip4_addr_cmp(ip4_current_dest_addr(), netif_ip4_addr(netif)) ||
                     (
-                        // should we route it as the default gateway?
-                        ip4_addr_cmp(netif_ip4_gw(netif), netif_ip4_addr(netif)) && // we are the gateway adapter
-                        !ip4_addr_netcmp(ip4_current_dest_addr(), ip4_current_src_addr(), netif_ip4_netmask(netif)) // the message is off the subnet
+                        ip4_addr_cmp(netif_ip4_gw(netif), netif_ip4_addr(netif))
                     ) ||
                     /* or broadcast on this interface network address? */
                     ip4_addr_isbroadcast(ip4_current_dest_addr(), netif)

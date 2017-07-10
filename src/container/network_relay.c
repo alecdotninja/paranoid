@@ -57,6 +57,8 @@ network_relay_tcp_connection_t * network_relay_alloc_tcp_connection(network_rela
     if(tcp_connection != NULL) {
         tcp_connection->socket_fd = socket_fd;
         tcp_connection->pcb = pcb;
+        tcp_connection->buffer_size = 0;
+        tcp_connection->is_flushed = true;
 
         tcp_connection->next = network_relay->tcp_connection;
         network_relay->tcp_connection = tcp_connection;
@@ -88,18 +90,6 @@ void network_relay_free_tcp_connection(network_relay_t *network_relay, network_r
     close(target_tcp_connection->socket_fd);
     tcp_close(target_tcp_connection->pcb);
     free(target_tcp_connection);
-}
-
-void network_relay_tcp_connection_recv_socket(network_relay_tcp_connection_t *tcp_connection, void *message, size_t length) {
-    if(tcp_write(tcp_connection->pcb, message, (u16_t)length, TCP_WRITE_FLAG_COPY) != ERR_OK) {
-        fprintf(stderr, "[!] TCP dropped message (this should never happen)\n");
-        return;
-    }
-
-    if(tcp_output(tcp_connection->pcb) != ERR_OK) {
-        fprintf(stderr, "[!] TCP dropped message (this should never happen)\n");
-        return;
-    }
 }
 
 err_t network_relay_tcp_recv_pcb(network_relay_t *network_relay, struct tcp_pcb *pcb, struct pbuf *pbuf, err_t err) {
@@ -198,7 +188,7 @@ network_relay_udp_connection_t * network_relay_alloc_udp_connection(network_rela
     return udp_connection;
 }
 
-void network_relay_udp_connection_recv_socket(network_relay_udp_connection_t *udp_connection, void *payload, size_t length) {
+void network_relay_udp_connection_recv_socket(network_relay_udp_connection_t *udp_connection, void *payload, u16_t length) {
     udp_connection->last_used_at = time(NULL);
 
     struct udp_pcb *pcb = udp_connection->pcb;
@@ -209,10 +199,10 @@ void network_relay_udp_connection_recv_socket(network_relay_udp_connection_t *ud
     ip_addr_t remote_ip = udp_connection->remote_address;
     u16_t remote_port = udp_connection->remote_port;
 
-    struct pbuf *pbuf = pbuf_alloc(PBUF_TRANSPORT, (u16_t)length, PBUF_RAM);
+    struct pbuf *pbuf = pbuf_alloc(PBUF_TRANSPORT, length, PBUF_RAM);
 
     if(pbuf != NULL) {
-        memcpy(pbuf->payload, payload, length);
+        pbuf_take(pbuf, payload, length);
 
         struct netif *netif;
 
@@ -279,6 +269,43 @@ void network_relay_free_udp_connection(network_relay_t *network_relay, network_r
     free(target_udp_connection);
 }
 
+bool network_relay_tcp_connection_flush(network_relay_tcp_connection_t *tcp_connection) {
+    err_t err;
+
+    if(tcp_connection->buffer_size > 0) {
+        if ((err = tcp_write(tcp_connection->pcb, tcp_connection->buffer, tcp_connection->buffer_size, TCP_WRITE_FLAG_COPY)) != ERR_MEM) {
+            tcp_connection->buffer_size = 0;
+            tcp_connection->is_flushed = false;
+        }else{
+            return false;
+        }
+    }
+
+    if(!tcp_connection->is_flushed) {
+        if((err = tcp_output(tcp_connection->pcb)) != ERR_MEM) {
+            tcp_connection->is_flushed = true;
+        }else{
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void network_relay_flush_tcp_connections(network_relay_t *network_relay) {
+   network_relay_tcp_connection_t *tcp_connection = network_relay->tcp_connection;
+
+    while(tcp_connection != NULL) {
+        network_relay_tcp_connection_t *next_tcp_connection = tcp_connection->next;
+
+        if(tcp_connection->buffer_size > 0 || !tcp_connection->is_flushed) {
+            network_relay_tcp_connection_flush(tcp_connection);
+        }
+
+        tcp_connection = next_tcp_connection;
+    }
+}
+
 void network_relay_prune_udp_connections(network_relay_t *network_relay) {
     time_t now = time(NULL);
 
@@ -301,7 +328,7 @@ void network_relay_tcp_prepare_fd_set(network_relay_t *network_relay, fd_set *fd
     while(tcp_connection != NULL) {
         network_relay_tcp_connection_t *next_tcp_connection = tcp_connection->next;
 
-        if(tcp_sndbuf(tcp_connection->pcb) > 0) { // there's no point waiting for data that we can't handle
+        if(tcp_connection->buffer_size == 0 && tcp_connection->is_flushed) { // there's no point waiting for data that we can't handle
             int socket_fd = tcp_connection->socket_fd;
 
             if(max_fd != NULL && socket_fd > *max_fd) {
@@ -324,17 +351,15 @@ void network_relay_tcp_respond_fd_set(network_relay_t *network_relay, fd_set *fd
         int socket_fd = tcp_connection->socket_fd;
 
         if(FD_ISSET(socket_fd, fd_set)) {
-            u16_t capacity = tcp_sndbuf(tcp_connection->pcb);
+            assert(tcp_connection->buffer_size == 0 && tcp_connection->is_flushed);
 
-            if(capacity > 0) {
-                char buffer[capacity];
-                ssize_t length;
+            ssize_t length;
 
-                if((length = recv(socket_fd, &buffer, capacity, 0)) > 0) {
-                    network_relay_tcp_connection_recv_socket(tcp_connection, buffer, (size_t)length);
-                }else{
-                    network_relay_free_tcp_connection(network_relay, tcp_connection);
-                }
+            if((length = recv(socket_fd, tcp_connection->buffer, sizeof(tcp_connection->buffer), 0)) > 0) {
+                tcp_connection->buffer_size = (u16_t)length;
+                network_relay_tcp_connection_flush(tcp_connection);
+            }else{
+                network_relay_free_tcp_connection(network_relay, tcp_connection);
             }
         }
 
@@ -369,11 +394,11 @@ void network_relay_udp_respond_fd_set(network_relay_t *network_relay, fd_set *fd
         int socket_fd = udp_connection->socket_fd;
 
         if(FD_ISSET(socket_fd, fd_set)) {
-            char buffer[2048];
+            char buffer[BUFSIZ];
             ssize_t length;
 
             if((length = recv(socket_fd, &buffer, sizeof(buffer), 0)) > 0) {
-                network_relay_udp_connection_recv_socket(udp_connection, buffer, (size_t)length);
+                network_relay_udp_connection_recv_socket(udp_connection, buffer, (u16_t)length);
             }else{
                 network_relay_free_udp_connection(network_relay, udp_connection);
             }
@@ -446,6 +471,7 @@ void *network_relay_loop(network_relay_t *network_relay) {
         tv.tv_usec = (ms_until_next_timeout % 1000) * 1000;
 
         network_relay_prune_udp_connections(network_relay);
+        network_relay_flush_tcp_connections(network_relay);
 
         fd_set fd_set;
         FD_ZERO(&fd_set);
