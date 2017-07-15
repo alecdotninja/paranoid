@@ -6,7 +6,7 @@
 #include <pty.h>
 
 #include "container/tty.h"
-#include "container/fd_relay.h"
+#include "plumbing/fd_relay.h"
 #include "container/signaling.h"
 
 // based on openpty from libc with extra stuff removed

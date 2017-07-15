@@ -19,7 +19,7 @@
 #include <assert.h>
 #include <arpa/inet.h>
 
-#include "container/network_relay.h"
+#include "network_relay/network_relay.h"
 
 static void load_inet_into_sockaddr(struct sockaddr_in *sockaddr, const ip_addr_t *ip, u16_t port) {
     assert(IP_IS_V4_VAL(ip));

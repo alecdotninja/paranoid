@@ -210,7 +210,26 @@ set(
 )
 
 set(
+        PLUMBING_SOURCE_FILES
+
+        src/include/plumbing/fd_relay.h
+        src/plumbing/fd_relay.c
+)
+
+set(
+        NETWORK_RELAY_FILES
+
+        ${LWIP_SOURCE_FILES}
+
+        src/include/network_relay/network_relay.h
+        src/network_relay/network_relay.c
+)
+
+set(
         CONTAINER_SOURCE_FILES
+
+        ${PLUMBING_SOURCE_FILES}
+        ${NETWORK_RELAY_FILES}
 
         src/include/container/container.h
         src/container/container.c
@@ -221,14 +240,8 @@ set(
         src/include/container/init.h
         src/container/init.c
 
-        src/include/container/network_relay.h
-        src/container/network_relay.c
-
         src/include/container/networking.h
         src/container/networking.c
-
-        src/include/container/fd_relay.h
-        src/container/fd_relay.c
 
         src/include/container/signaling.h
         src/container/signaling.c
@@ -246,7 +259,7 @@ set(
         src/container/userns.c
 )
 
-add_executable(paranoid ${LWIP_SOURCE_FILES} ${CONTAINER_SOURCE_FILES} src/paraniod.c)
+add_executable(paranoid ${CONTAINER_SOURCE_FILES} src/paraniod.c)
 target_link_libraries(paranoid pthread)
 
 add_custom_command(

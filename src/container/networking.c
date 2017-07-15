@@ -14,7 +14,7 @@
 #include <linux/if_tun.h>
 
 #include "container/networking.h"
-#include "container/network_relay.h"
+#include "network_relay/network_relay.h"
 #include "container/signaling.h"
 
 static int open_tap() {

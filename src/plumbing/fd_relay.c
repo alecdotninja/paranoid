@@ -6,7 +6,7 @@
 #include <pty.h>
 #include <pthread.h>
 
-#include "container/fd_relay.h"
+#include "plumbing/fd_relay.h"
 
 static void *do_relay(void *data) {
     fd_relay_t *relay = data;

@@ -6,7 +6,7 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <zconf.h>
-#include <container/fd_relay.h>
+#include <plumbing/fd_relay.h>
 
 #include "container/fs.h"
 
