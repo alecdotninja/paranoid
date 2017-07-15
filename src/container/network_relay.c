@@ -21,7 +21,7 @@
 
 #include "container/network_relay.h"
 
-void load_inet_into_sockaddr(struct sockaddr_in *sockaddr, const ip_addr_t *ip, u16_t port) {
+static void load_inet_into_sockaddr(struct sockaddr_in *sockaddr, const ip_addr_t *ip, u16_t port) {
     assert(IP_IS_V4_VAL(ip));
 
     sockaddr->sin_family = AF_INET;
@@ -32,7 +32,7 @@ void load_inet_into_sockaddr(struct sockaddr_in *sockaddr, const ip_addr_t *ip, 
     assert(inet_pton(AF_INET, buffer, &sockaddr->sin_addr) > 0);
 }
 
-network_relay_tcp_connection_t * network_relay_alloc_tcp_connection(network_relay_t *network_relay, int socket_fd, struct tcp_pcb *pcb) {
+static network_relay_tcp_connection_t * network_relay_alloc_tcp_connection(network_relay_t *network_relay, int socket_fd, struct tcp_pcb *pcb) {
     assert(pcb != NULL); // for now
 
     if(socket_fd < 0) {
@@ -67,7 +67,7 @@ network_relay_tcp_connection_t * network_relay_alloc_tcp_connection(network_rela
     return tcp_connection;
 }
 
-void network_relay_free_tcp_connection(network_relay_t *network_relay, network_relay_tcp_connection_t *target_tcp_connection) {
+static void network_relay_free_tcp_connection(network_relay_t *network_relay, network_relay_tcp_connection_t *target_tcp_connection) {
     network_relay_tcp_connection_t *prev_tcp_connection = NULL;
     network_relay_tcp_connection_t *tcp_connection = network_relay->tcp_connection;
 
@@ -92,7 +92,7 @@ void network_relay_free_tcp_connection(network_relay_t *network_relay, network_r
     free(target_tcp_connection);
 }
 
-err_t network_relay_tcp_recv_pcb(network_relay_t *network_relay, struct tcp_pcb *pcb, struct pbuf *pbuf, err_t err) {
+static err_t network_relay_tcp_recv_pcb(network_relay_t *network_relay, struct tcp_pcb *pcb, struct pbuf *pbuf, err_t err) {
     if(err == ERR_OK) {
         network_relay_tcp_connection_t *tcp_connection = network_relay->tcp_connection;
 
@@ -129,7 +129,7 @@ err_t network_relay_tcp_recv_pcb(network_relay_t *network_relay, struct tcp_pcb 
     }
 }
 
-err_t network_relay_tcp_accept(network_relay_t *network_relay, struct tcp_pcb *pcb, err_t err) {
+static err_t network_relay_tcp_accept(network_relay_t *network_relay, struct tcp_pcb *pcb, err_t err) {
     if(pcb != NULL && err == ERR_OK) {
         network_relay_tcp_connection_t *tcp_connection = network_relay_alloc_tcp_connection(network_relay, -1, pcb);
 
@@ -145,7 +145,7 @@ err_t network_relay_tcp_accept(network_relay_t *network_relay, struct tcp_pcb *p
     }
 }
 
-network_relay_udp_connection_t * network_relay_alloc_udp_connection(network_relay_t *network_relay,
+static network_relay_udp_connection_t * network_relay_alloc_udp_connection(network_relay_t *network_relay,
                                                                     ip_addr_t local_address, u16_t local_port,
                                                                     ip_addr_t remote_address, u16_t remote_port,
                                                                     int socket_fd, struct udp_pcb *pcb) {
@@ -188,7 +188,7 @@ network_relay_udp_connection_t * network_relay_alloc_udp_connection(network_rela
     return udp_connection;
 }
 
-void network_relay_udp_connection_recv_socket(network_relay_udp_connection_t *udp_connection, void *payload, u16_t length) {
+static void network_relay_udp_connection_recv_socket(network_relay_udp_connection_t *udp_connection, void *payload, u16_t length) {
     udp_connection->last_used_at = time(NULL);
 
     struct udp_pcb *pcb = udp_connection->pcb;
@@ -221,7 +221,7 @@ void network_relay_udp_connection_recv_socket(network_relay_udp_connection_t *ud
     }
 }
 
-void network_relay_udp_connection_recv_pcb(network_relay_udp_connection_t *udp_connection, void *payload, size_t length) {
+static void network_relay_udp_connection_recv_pcb(network_relay_udp_connection_t *udp_connection, void *payload, size_t length) {
     udp_connection->last_used_at = time(NULL);
 
     ip_addr_t local_ip = udp_connection->local_address;
@@ -235,7 +235,7 @@ void network_relay_udp_connection_recv_pcb(network_relay_udp_connection_t *udp_c
     }
 }
 
-void network_relay_udp_recv_pcb(network_relay_t *network_relay, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *remote_ip, u16_t remote_port, const ip_addr_t *local_ip, u16_t local_port) {
+static void network_relay_udp_recv_pcb(network_relay_t *network_relay, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *remote_ip, u16_t remote_port, const ip_addr_t *local_ip, u16_t local_port) {
     network_relay_udp_connection_t *udp_connection = network_relay_alloc_udp_connection(network_relay, *local_ip, local_port, *remote_ip, remote_port, -1, pcb);
 
     if(udp_connection != NULL) {
@@ -245,7 +245,7 @@ void network_relay_udp_recv_pcb(network_relay_t *network_relay, struct udp_pcb *
     pbuf_free(p);
 }
 
-void network_relay_free_udp_connection(network_relay_t *network_relay, network_relay_udp_connection_t *target_udp_connection) {
+static void network_relay_free_udp_connection(network_relay_t *network_relay, network_relay_udp_connection_t *target_udp_connection) {
     network_relay_udp_connection_t *prev_udp_connection = NULL;
     network_relay_udp_connection_t *udp_connection = network_relay->udp_connection;
 
@@ -269,7 +269,7 @@ void network_relay_free_udp_connection(network_relay_t *network_relay, network_r
     free(target_udp_connection);
 }
 
-bool network_relay_tcp_connection_flush(network_relay_tcp_connection_t *tcp_connection) {
+static bool network_relay_tcp_connection_flush(network_relay_tcp_connection_t *tcp_connection) {
     err_t err;
 
     if(tcp_connection->buffer_size > 0) {
@@ -292,7 +292,7 @@ bool network_relay_tcp_connection_flush(network_relay_tcp_connection_t *tcp_conn
     return true;
 }
 
-void network_relay_flush_tcp_connections(network_relay_t *network_relay) {
+static void network_relay_flush_tcp_connections(network_relay_t *network_relay) {
    network_relay_tcp_connection_t *tcp_connection = network_relay->tcp_connection;
 
     while(tcp_connection != NULL) {
@@ -306,7 +306,7 @@ void network_relay_flush_tcp_connections(network_relay_t *network_relay) {
     }
 }
 
-void network_relay_prune_udp_connections(network_relay_t *network_relay) {
+static void network_relay_prune_udp_connections(network_relay_t *network_relay) {
     time_t now = time(NULL);
 
     network_relay_udp_connection_t *udp_connection = network_relay->udp_connection;
@@ -322,7 +322,7 @@ void network_relay_prune_udp_connections(network_relay_t *network_relay) {
     }
 }
 
-void network_relay_tcp_prepare_fd_set(network_relay_t *network_relay, fd_set *fd_set, int *max_fd) {
+static void network_relay_tcp_prepare_fd_set(network_relay_t *network_relay, fd_set *fd_set, int *max_fd) {
     network_relay_tcp_connection_t *tcp_connection = network_relay->tcp_connection;
 
     while(tcp_connection != NULL) {
@@ -342,7 +342,7 @@ void network_relay_tcp_prepare_fd_set(network_relay_t *network_relay, fd_set *fd
     }
 }
 
-void network_relay_tcp_respond_fd_set(network_relay_t *network_relay, fd_set *fd_set) {
+static void network_relay_tcp_respond_fd_set(network_relay_t *network_relay, fd_set *fd_set) {
     network_relay_tcp_connection_t *tcp_connection = network_relay->tcp_connection;
 
     while(tcp_connection != NULL) {
@@ -367,7 +367,7 @@ void network_relay_tcp_respond_fd_set(network_relay_t *network_relay, fd_set *fd
     }
 }
 
-void network_relay_udp_prepare_fd_set(network_relay_t *network_relay, fd_set *fd_set, int *max_fd) {
+static void network_relay_udp_prepare_fd_set(network_relay_t *network_relay, fd_set *fd_set, int *max_fd) {
     network_relay_udp_connection_t *udp_connection = network_relay->udp_connection;
 
     while(udp_connection != NULL) {
@@ -385,7 +385,7 @@ void network_relay_udp_prepare_fd_set(network_relay_t *network_relay, fd_set *fd
     }
 }
 
-void network_relay_udp_respond_fd_set(network_relay_t *network_relay, fd_set *fd_set) {
+static void network_relay_udp_respond_fd_set(network_relay_t *network_relay, fd_set *fd_set) {
     network_relay_udp_connection_t *udp_connection = network_relay->udp_connection;
 
     while(udp_connection != NULL) {
@@ -408,7 +408,7 @@ void network_relay_udp_respond_fd_set(network_relay_t *network_relay, fd_set *fd
     }
 }
 
-void network_relay_init_tcp(network_relay_t *network_relay) {
+static void network_relay_init_tcp(network_relay_t *network_relay) {
     struct tcp_pcb *tcp_listener = tcp_new();
     tcp_arg(tcp_listener, network_relay);
     tcp_bind(tcp_listener, IP_ADDR_ANY, 0);
@@ -418,7 +418,7 @@ void network_relay_init_tcp(network_relay_t *network_relay) {
     network_relay->tcp_listener = tcp_listener;
 }
 
-void network_relay_init_upd(network_relay_t *network_relay) {
+static void network_relay_init_upd(network_relay_t *network_relay) {
     struct udp_pcb *udp_listener = udp_new();
     udp_bind(udp_listener, IP_ADDR_ANY, 0);
     udp_recv(udp_listener, (udp_recv_fn)network_relay_udp_recv_pcb, network_relay);
@@ -426,7 +426,7 @@ void network_relay_init_upd(network_relay_t *network_relay) {
     network_relay->udp_listener = udp_listener;
 }
 
-void network_relay_init(network_relay_t *network_relay) {
+static void network_relay_init(network_relay_t *network_relay) {
     ip_addr_t *ip = &network_relay->ip;
     ip_addr_t *netmask = &network_relay->netmask;
 
@@ -443,19 +443,19 @@ void network_relay_init(network_relay_t *network_relay) {
     network_relay_init_upd(network_relay);
 }
 
-void network_relay_prepare_fd_set(network_relay_t *network_relay, fd_set *fd_set, int *max_fd) {
+static void network_relay_prepare_fd_set(network_relay_t *network_relay, fd_set *fd_set, int *max_fd) {
     tapif_prepare_fd_set(&network_relay->netif, fd_set, max_fd);
     network_relay_tcp_prepare_fd_set(network_relay, fd_set, max_fd);
     network_relay_udp_prepare_fd_set(network_relay, fd_set, max_fd);
 }
 
-void network_relay_respond_fd_set(network_relay_t *network_relay, fd_set *fd_set) {
+static void network_relay_respond_fd_set(network_relay_t *network_relay, fd_set *fd_set) {
     tapif_respond_fd_set(&network_relay->netif, fd_set);
     network_relay_tcp_respond_fd_set(network_relay, fd_set);
     network_relay_udp_respond_fd_set(network_relay, fd_set);
 }
 
-void *network_relay_loop(network_relay_t *network_relay) {
+static void *network_relay_loop(network_relay_t *network_relay) {
     network_relay_init(network_relay);
 
     while (1) {

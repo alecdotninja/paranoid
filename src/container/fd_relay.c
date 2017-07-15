@@ -2,43 +2,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <stropts.h>
 #include <pty.h>
 #include <pthread.h>
 
-#include "container/plumbing.h"
+#include "container/fd_relay.h"
 
-int copy_file(const char * source_file_path, const char * destination_file_path) {
-    int source_file_fd = open(source_file_path, O_RDONLY);
-
-    if(source_file_fd < 0) {
-        return -1;
-    }
-
-    int destination_file_fd = open(destination_file_path, O_CREAT | O_WRONLY);
-
-    if(destination_file_fd < 0) {
-        return -2;
-    }
-
-    char buffer[BUFSIZ];
-    ssize_t size;
-
-    while((size = read(source_file_fd, buffer, sizeof(buffer))) > 0) {
-        if(write(destination_file_fd, buffer, (size_t)size) < size) {
-            return -3;
-        }
-    }
-
-    close(source_file_fd);
-    close(destination_file_fd);
-
-    return 0;
-}
-
-void *do_relay(void *data) {
-    relay_t *relay = data;
+static void *do_relay(void *data) {
+    fd_relay_t *relay = data;
 
     int in_fd = relay->in_fd;
     int out_fd = relay->out_fd;
@@ -78,12 +49,12 @@ void *do_relay(void *data) {
     return NULL;
 }
 
-relay_t *spawn_relay(int in_fd, int out_fd) {
-    relay_t *relay = malloc(sizeof(relay_t));
+fd_relay_t *spawn_fd_relay(int in_fd, int out_fd) {
+    fd_relay_t *relay = malloc(sizeof(fd_relay_t));
     relay->in_fd = in_fd;
     relay->out_fd = out_fd;
 
-    if(pthread_create(&relay->relay_thread, NULL, do_relay, relay) < 0) {
+    if(pthread_create(&relay->fd_relay_thread, NULL, do_relay, relay) < 0) {
         free(relay);
         relay = NULL;
     }

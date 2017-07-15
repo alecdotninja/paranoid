@@ -6,7 +6,7 @@
 
 #include "container/init.h"
 
-ssize_t mkenviron(char *buffer, size_t buffer_size, const char *key, const char *default_value) {
+static ssize_t mkenviron(char *buffer, size_t buffer_size, const char *key, const char *default_value) {
     const char *value = secure_getenv(key);
 
     if(value == NULL) {

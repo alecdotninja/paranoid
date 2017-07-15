@@ -6,7 +6,7 @@
 
 #include "container/spawn.h"
 
-pid_t __attribute__((noinline)) spawn(int (*main) (void *), int flags, void *arg) {
+static pid_t __attribute__((noinline)) spawn(int (*main) (void *), int flags, void *arg) {
     return clone(main, __builtin_frame_address(0), flags | SIGCHLD, arg);
 }
 

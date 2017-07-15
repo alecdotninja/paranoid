@@ -17,7 +17,7 @@
 #include "container/network_relay.h"
 #include "container/signaling.h"
 
-int open_tap() {
+static int open_tap() {
     struct ifreq ifr;
     int fd, err;
 

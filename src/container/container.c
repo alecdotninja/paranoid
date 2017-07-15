@@ -17,7 +17,7 @@
 #include "container/unsafe.h"
 #include "container/userns.h"
 
-int child_main(container_t *container) {
+static int child_main(container_t *container) {
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 
     container_finalize_signaling_socket_child(container);

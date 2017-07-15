@@ -6,11 +6,11 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <zconf.h>
-#include <container/plumbing.h>
+#include <container/fd_relay.h>
 
 #include "container/fs.h"
 
-void link_dev(const char * source_path, const char * dest_path, mode_t mode) {
+static void link_dev(const char * source_path, const char * dest_path, mode_t mode) {
     mknod(dest_path, mode, S_IFCHR);
 
     if(mount(source_path, dest_path, NULL, MS_BIND, NULL) < 0) {
@@ -19,7 +19,7 @@ void link_dev(const char * source_path, const char * dest_path, mode_t mode) {
     }
 }
 
-void build_dev() {
+static void build_dev() {
     // http://www.linuxfromscratch.org/lfs/view/6.1/chapter06/devices.html
     mkdir("./dev", S_IRWXU);
 
@@ -64,7 +64,7 @@ void build_dev() {
     symlink("/proc/self/fd/2", "./dev/stderr");
 }
 
-void mount_cgroup_subsystem(const char * subsystem) {
+static void mount_cgroup_subsystem(const char * subsystem) {
     char path[2048];
     snprintf(path, sizeof(path), "./sys/fs/cgroup/%s", subsystem);
 
@@ -75,7 +75,7 @@ void mount_cgroup_subsystem(const char * subsystem) {
     }
 }
 
-void mount_cgroup_subsystems() {
+static void mount_cgroup_subsystems() {
     void *handle;
     struct controller_data data;
 
@@ -112,7 +112,7 @@ void mount_cgroup_subsystems() {
     }
 }
 
-void build_sys() {
+static void build_sys() {
     mkdir("./sys", S_IRWXU);
 
     if(mount("sysfs", "./sys", "sysfs", MS_MGC_VAL, NULL) < 0) {
@@ -133,7 +133,7 @@ void build_sys() {
     }
 }
 
-void build_proc() {
+static void build_proc() {
     mkdir("./proc", S_IRWXU);
 
     if(mount("proc", "./proc", "proc", MS_MGC_VAL, NULL) < 0) {
@@ -142,7 +142,7 @@ void build_proc() {
     }
 }
 
-void build_tmp_and_run() {
+static void build_tmp_and_run() {
     mkdir("./tmp", S_IRWXU);
 
     if(mount("tmpfs", "./tmp", "tmpfs", MS_NOSUID | MS_NODEV, "") < 0) {

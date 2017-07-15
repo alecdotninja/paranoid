@@ -6,11 +6,11 @@
 #include <pty.h>
 
 #include "container/tty.h"
-#include "container/plumbing.h"
+#include "container/fd_relay.h"
 #include "container/signaling.h"
 
 // based on openpty from libc with extra stuff removed
-int create_pty(int *master_fd, int *slave_fd) {
+static int create_pty(int *master_fd, int *slave_fd) {
     if((*master_fd = getpt()) < 0) {
         return -1;
     }
@@ -100,8 +100,8 @@ void container_spawn_tty_relay(container_t *container) {
         exit(EXIT_FAILURE);
     }
 
-    spawn_relay(STDIN_FILENO, tty_fd);
-    spawn_relay(tty_fd, STDOUT_FILENO);
+    spawn_fd_relay(STDIN_FILENO, tty_fd);
+    spawn_fd_relay(tty_fd, STDOUT_FILENO);
 
     send_message(container->parent_signaling_fd, 0);
 }

@@ -227,8 +227,8 @@ set(
         src/include/container/networking.h
         src/container/networking.c
 
-        src/include/container/plumbing.h
-        src/container/plumbing.c
+        src/include/container/fd_relay.h
+        src/container/fd_relay.c
 
         src/include/container/signaling.h
         src/container/signaling.c

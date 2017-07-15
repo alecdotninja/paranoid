@@ -3,14 +3,14 @@
 
 #include <pthread.h>
 
-typedef struct relay {
-    pthread_t relay_thread;
+typedef struct fd_relay {
+    pthread_t fd_relay_thread;
 
     int in_fd;
     int out_fd;
-} relay_t;
+} fd_relay_t;
 
 int copy_file(const char * source_file_path, const char * destination_file_path);
-relay_t *spawn_relay(int in_fd, int out_fd);
+fd_relay_t *spawn_fd_relay(int in_fd, int out_fd);
 
 #endif //PARANOID_PLUMBING_H

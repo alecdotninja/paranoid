@@ -8,7 +8,7 @@
 
 #include "container/userns.h"
 
-int set_uid_map(pid_t pid_outside, uid_t start_uid_inside, uid_t start_uid_outside, size_t extent_size) {
+static int set_uid_map(pid_t pid_outside, uid_t start_uid_inside, uid_t start_uid_outside, size_t extent_size) {
     if(start_uid_inside == start_uid_outside) {
         return 0;
     }
@@ -36,7 +36,7 @@ int set_uid_map(pid_t pid_outside, uid_t start_uid_inside, uid_t start_uid_outsi
     return 0;
 }
 
-int set_gid_map(pid_t pid_outside, gid_t start_gid_inside, gid_t start_gid_outside, size_t extent_size) {
+static int set_gid_map(pid_t pid_outside, gid_t start_gid_inside, gid_t start_gid_outside, size_t extent_size) {
     if(start_gid_inside == start_gid_outside) {
         return 0;
     }
@@ -64,7 +64,7 @@ int set_gid_map(pid_t pid_outside, gid_t start_gid_inside, gid_t start_gid_outsi
     return 0;
 }
 
-int disable_setgroups(pid_t pid_outside) {
+static int disable_setgroups(pid_t pid_outside) {
     char path[256] = { 0 };
 
     if(snprintf(path, sizeof(path), "/proc/%u/setgroups", pid_outside) > sizeof(path)) {
@@ -86,7 +86,7 @@ int disable_setgroups(pid_t pid_outside) {
     }
 }
 
-int map_effective_id_as_root_for_process(pid_t pid) {
+static int map_effective_id_as_root_for_process(pid_t pid) {
     uid_t uid = geteuid();
     gid_t gid = geteuid();
 
@@ -103,7 +103,7 @@ int map_effective_id_as_root_for_process(pid_t pid) {
     return 0;
 }
 
-int scan_shadow_subid_config(const char *filename, const char *target_loginname, unsigned int *target_subid_start, size_t *target_subid_count) {
+static int scan_shadow_subid_config(const char *filename, const char *target_loginname, unsigned int *target_subid_start, size_t *target_subid_count) {
     FILE *subid_config;
     if((subid_config = fopen(filename, "r")) == NULL) {
         return -1;
@@ -143,7 +143,7 @@ int scan_shadow_subid_config(const char *filename, const char *target_loginname,
     return 0;
 }
 
-int map_effective_id_as_root_and_subids_for_process(pid_t pid) {
+static int map_effective_id_as_root_and_subids_for_process(pid_t pid) {
     gid_t gid = geteuid();
     uid_t uid = geteuid();
 
