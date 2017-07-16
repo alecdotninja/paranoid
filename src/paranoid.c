@@ -80,10 +80,12 @@ int main (int argc, char **argv) {
 
     if((error = container_start(&container)) != CONTAINER_ERROR_OKAY) {
         fprintf(stderr, "Failed to start container: %s\n", container_explain_error(error));
+        exit(EXIT_FAILURE);
     }
 
     if((error = container_wait(&container)) != CONTAINER_ERROR_OKAY) {
         fprintf(stderr, "Failed to wait for container: %s\n", container_explain_error(error));
+        exit(EXIT_FAILURE);
     }
 
     return container.init_exit_code;

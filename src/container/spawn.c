@@ -44,7 +44,7 @@ static int spawn_main(struct spawn_data *spawn_data) {
 
     container_error_t error;
     if((error = container_start_fn(container)) != CONTAINER_ERROR_OKAY) {
-        // TODO: Get the error back out to the parent process
+        fprintf(stderr, "Failed to initialize container: %s\n", container_explain_error(error));
         _exit(EXIT_FAILURE);
     }
 
