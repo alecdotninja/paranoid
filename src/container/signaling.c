@@ -186,26 +186,11 @@ container_error_t container_signaling_sync_send_fd(container_t *container, int *
     cmhp->cmsg_type = SCM_RIGHTS;
     *((int *) CMSG_DATA(cmhp)) = *fd;
 
-    if(sendmsg(signaling_fd, &msgh, 0)) {
+    if(sendmsg(signaling_fd, &msgh, 0) < 0) {
         return CONTAINER_ERROR_SYSTEM;
     }
 
-    control_un.cmh.cmsg_len = CMSG_LEN(sizeof(int));
-    control_un.cmh.cmsg_level = SOL_SOCKET;
-    control_un.cmh.cmsg_type = SCM_RIGHTS;
-
-    msgh.msg_control = control_un.control;
-    msgh.msg_controllen = sizeof(control_un.control);
-
-    msgh.msg_iov = &iov;
-    msgh.msg_iovlen = 1;
-    iov.iov_base = &in_msg;
-    iov.iov_len = sizeof(in_msg);
-
-    msgh.msg_name = NULL;
-    msgh.msg_namelen = 0;
-
-    if(recvmsg(signaling_fd, &msgh, 0) < 0) {
+    if(read(signaling_fd, &in_msg, sizeof(in_msg)) < 0) {
         return CONTAINER_ERROR_SYSTEM;
     }
 
@@ -230,6 +215,10 @@ container_error_t container_signaling_sync_recv_fd(container_t *container, int *
     int out_msg = 2;
     int in_msg = 1;
 
+    if(write(signaling_fd, &out_msg, sizeof(out_msg)) < 0) {
+        return CONTAINER_ERROR_SYSTEM;
+    }
+
     struct msghdr msgh;
     struct iovec iov;
 
@@ -238,22 +227,6 @@ container_error_t container_signaling_sync_recv_fd(container_t *container, int *
         char   control[CMSG_SPACE(sizeof(int))];
     } control_un;
     struct cmsghdr *cmhp;
-
-    msgh.msg_iov = NULL;
-    msgh.msg_iovlen = 0;
-
-    iov.iov_base = &out_msg;
-    iov.iov_len = sizeof(out_msg);
-
-    msgh.msg_name = NULL;
-    msgh.msg_namelen = 0;
-
-    msgh.msg_control = control_un.control;
-    msgh.msg_controllen = sizeof(control_un.control);
-
-    if(sendmsg(signaling_fd, &msgh, 0)) {
-        return CONTAINER_ERROR_SYSTEM;
-    }
 
     control_un.cmh.cmsg_len = CMSG_LEN(sizeof(int));
     control_un.cmh.cmsg_level = SOL_SOCKET;

@@ -52,6 +52,10 @@ container_error_t container_networking_initialize_child(container_t *container) 
         return CONTAINER_ERROR_NET_HOSTNAME;
     }
 
+    if(!container->networking_enabled) {
+        return CONTAINER_ERROR_OKAY;
+    }
+
     int tap_fd;
     if((tap_fd = open_tap()) < 0) {
         return CONTAINER_ERROR_NET_TAP;
@@ -94,6 +98,10 @@ container_error_t container_networking_initialize_parent(container_t *container)
         return CONTAINER_ERROR_SANITY;
     }
 
+    if(!container->networking_enabled) {
+        return CONTAINER_ERROR_OKAY;
+    }
+
     if(container->network_relay != NULL) {
         return CONTAINER_ERROR_SANITY;
     }
@@ -118,7 +126,7 @@ container_error_t container_networking_initialize_parent(container_t *container)
     return CONTAINER_ERROR_OKAY;
 }
 
-container_error_t container_set_hostname(container_t *container, const char *hostname) {
+container_error_t container_networking_set_hostname(container_t *container, const char *hostname) {
     if(container == NULL) {
         return CONTAINER_ERROR_SANITY;
     }
@@ -132,6 +140,20 @@ container_error_t container_set_hostname(container_t *container, const char *hos
     }
 
     container->hostname = hostname;
+
+    return CONTAINER_ERROR_OKAY;
+}
+
+container_error_t container_networking_set_enabled(container_t *container, bool networking_enabled) {
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
+    if(container->state != CONTAINER_STATE_STOPPED) {
+        return CONTAINER_ERROR_ARG;
+    }
+
+    container->networking_enabled = networking_enabled;
 
     return CONTAINER_ERROR_OKAY;
 }

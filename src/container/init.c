@@ -45,18 +45,3 @@ container_error_t container_init_exec(container_t *container) {
 
     return CONTAINER_ERROR_SANITY;
 }
-
-container_error_t container_set_init(container_t *container, int argc, char ** argv) {
-    if(container == NULL) {
-        return CONTAINER_ERROR_SANITY;
-    }
-
-    if(container->state != CONTAINER_STATE_STOPPED) {
-        return CONTAINER_ERROR_ARG;
-    }
-
-    container->init_argc = argc;
-    container->init_argv = argv;
-
-    return CONTAINER_ERROR_OKAY;
-}

@@ -280,21 +280,3 @@ container_error_t container_fs_namespace_initialize(container_t *container) {
 
     return CONTAINER_ERROR_OKAY;
 }
-
-container_error_t container_set_root_path(container_t *container, const char *root_path) {
-    if(container == NULL) {
-        return CONTAINER_ERROR_SANITY;
-    }
-
-    if(container->state != CONTAINER_STATE_STOPPED) {
-        return CONTAINER_ERROR_ARG;
-    }
-
-    if(root_path == NULL) {
-        return CONTAINER_ERROR_ARG;
-    }
-
-    container->root_path = root_path;
-
-    return CONTAINER_ERROR_OKAY;
-}

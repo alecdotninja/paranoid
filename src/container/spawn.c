@@ -42,7 +42,9 @@ static int spawn_main(struct spawn_data *spawn_data) {
         _exit(EXIT_FAILURE);
     }
 
-    if(container_start_fn(container) != CONTAINER_ERROR_OKAY) {
+    container_error_t error;
+    if((error = container_start_fn(container)) != CONTAINER_ERROR_OKAY) {
+        // TODO: Get the error back out to the parent process
         _exit(EXIT_FAILURE);
     }
 

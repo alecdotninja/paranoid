@@ -17,6 +17,33 @@
 #include "container/unsafe.h"
 #include "container/userns.h"
 
+const char *container_explain_error(container_error_t error) {
+    switch(error) {
+        case CONTAINER_ERROR_OKAY:
+            return "The operation completed successfully";
+        case CONTAINER_ERROR_SYSTEM:
+            return strerror(errno);
+        case CONTAINER_ERROR_ARG:
+            return "Incorrect argument";
+        case CONTAINER_ERROR_ROOT:
+            return "Refused to run as root";
+        case CONTAINER_ERROR_USER:
+            return "Failed to create user namespace";
+        case CONTAINER_ERROR_NET_HOSTNAME:
+            return "Failed to set hostname";
+        case CONTAINER_ERROR_NET_TAP:
+            return "Failed to create TAP device in network namespace";
+        case CONTAINER_ERROR_NET_IFCONFIG:
+            return "Failed to configure TAP device in network namespace";
+        case CONTAINER_ERROR_NET_RELAY:
+            return "Failed to start network relay";
+        case CONTAINER_ERROR_TTY:
+            return "Failed to create TTY";
+        default:
+            return "An unknown error occurred";
+    }
+}
+
 static container_error_t container_start_child(container_t *container) {
     container_error_t error;
 
@@ -73,7 +100,7 @@ static container_error_t container_start_parent(container_t *container) {
     return CONTAINER_ERROR_OKAY;
 }
 
-container_error_t container_init(container_t *container) {
+container_error_t container_init(container_t *container, const char *root_path, char **init_argv) {
     if(container == NULL) {
         return CONTAINER_ERROR_SANITY;
     }
@@ -81,14 +108,17 @@ container_error_t container_init(container_t *container) {
     container->state = CONTAINER_STATE_STOPPED;
     container->parent_signaling_fd = -1;
     container->child_signaling_fd = -1;
+
+    container->networking_enabled = false;
     container->hostname = NULL;
     container->network_relay = NULL;
-    container->root_path = NULL;
+
+    container->root_path = root_path;
     container->stdin_relay = NULL;
     container->stdout_relay = NULL;
+
     container->init_pid = 0;
-    container->init_argc = 0;
-    container->init_argv = NULL;
+    container->init_argv = init_argv;
     container->init_exit_code = 0;
 
     return CONTAINER_ERROR_OKAY;

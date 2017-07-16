@@ -3,6 +3,8 @@
 
 #include <network_relay/network_relay.h>
 #include <plumbing/fd_relay.h>
+#include <string.h>
+#include <errno.h>
 
 typedef enum {
     CONTAINER_STATE_STOPPED         = 0,
@@ -21,6 +23,7 @@ typedef enum {
     /* an internal sanity check failed */
     CONTAINER_ERROR_SANITY          = -2,
 
+    /* invalid argument */
     CONTAINER_ERROR_ARG             = -3,
 
     /* refused to run as root */
@@ -51,6 +54,7 @@ typedef struct container {
     int parent_signaling_fd;
     int child_signaling_fd;
 
+    bool networking_enabled;
     const char *hostname;
     network_relay_t *network_relay;
 
@@ -60,12 +64,12 @@ typedef struct container {
     fd_relay_t *stdout_relay;
 
     pid_t init_pid;
-    int init_argc;
     char **init_argv;
     int init_exit_code;
 } container_t;
 
-container_error_t container_init(container_t *container);
+const char *container_explain_error(container_error_t error);
+container_error_t container_init(container_t *container, const char *root_path, char **init_argv);
 container_error_t container_start(container_t *container);
 container_error_t container_wait(container_t *container);
 

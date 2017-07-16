@@ -259,7 +259,7 @@ set(
         src/container/userns.c
 )
 
-add_executable(paranoid ${CONTAINER_SOURCE_FILES} src/paraniod.c)
+add_executable(paranoid ${CONTAINER_SOURCE_FILES} src/paranoid.c)
 target_link_libraries(paranoid pthread)
 
 add_custom_command(
