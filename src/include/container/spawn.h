@@ -7,10 +7,7 @@
 
 #include "container.h"
 
-#ifndef CLONE_NEWCGROUP
-#define CLONE_NEWCGROUP 0x02000000
-#endif
-
-void container_spawn_child(container_t *container, int (*container_main) (container_t *container));
+container_error_t container_spawn(container_t *container, container_error_t (*container_start_fn)(container_t *));
+container_error_t container_spawn_kill(container_t *container);
 
 #endif //PARANOID_SPAWN_H

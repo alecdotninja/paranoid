@@ -493,7 +493,7 @@ static void *network_relay_loop(network_relay_t *network_relay) {
     return NULL;
 }
 
-network_relay_t *spawn_network_relay(int tap_fd, const ip_addr_t *ip, const ip_addr_t *netmask) {
+network_relay_t *network_relay_spawn(int tap_fd, const ip_addr_t *ip, const ip_addr_t *netmask) {
     network_relay_t *network_relay = calloc(1, sizeof(network_relay_t));
     network_relay->tapif.fd = tap_fd;
     network_relay->udp_connection = NULL;

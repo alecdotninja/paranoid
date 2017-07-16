@@ -234,8 +234,8 @@ set(
         src/include/container/container.h
         src/container/container.c
 
-        src/include/container/fs.h
-        src/container/fs.c
+        src/include/container/fsns.h
+        src/container/fsns.c
 
         src/include/container/init.h
         src/container/init.c

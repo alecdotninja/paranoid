@@ -9,16 +9,12 @@
 
 #include "container.h"
 
-#define FD_TRANSIT_CHECK (1337)
-
-ssize_t send_fd(int socket_fd, int fd);
-int recv_fd(int socket_fd);
-
-int receive_message(int signaling_fd);
-void send_message(int signaling_fd, int message);
-
-void container_initialize_signaling_socket(container_t *container);
-void container_finalize_signaling_socket_parent(container_t *container);
-void container_finalize_signaling_socket_child(container_t *container);
+container_error_t container_signaling_initialize_pre_spawn(container_t *container);
+container_error_t container_signaling_initialize_parent(container_t *container);
+container_error_t container_signaling_initialize_child(container_t *container);
+container_error_t container_signaling_finalize(container_t *container);
+container_error_t container_signaling_sync(container_t *container);
+container_error_t container_signaling_sync_send_fd(container_t *container, int *fd);
+container_error_t container_signaling_sync_recv_fd(container_t *container, int *fd);
 
 #endif //PARANOID_SIGNALING_H

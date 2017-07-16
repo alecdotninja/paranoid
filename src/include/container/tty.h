@@ -7,7 +7,7 @@
 
 #include "container.h"
 
-void container_child_setup_tty(container_t *container);
-void container_spawn_tty_relay(container_t *container);
+container_error_t container_tty_initialize_child(container_t *container);
+container_error_t container_tty_initialize_parent(container_t *container);
 
 #endif //PARANOID_TTY_H

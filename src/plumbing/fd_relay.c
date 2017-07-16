@@ -49,7 +49,7 @@ static void *do_relay(void *data) {
     return NULL;
 }
 
-fd_relay_t *spawn_fd_relay(int in_fd, int out_fd) {
+fd_relay_t *fd_relay_spawn(int in_fd, int out_fd) {
     fd_relay_t *relay = malloc(sizeof(fd_relay_t));
     relay->in_fd = in_fd;
     relay->out_fd = out_fd;

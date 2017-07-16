@@ -3,7 +3,9 @@
 
 #include "container.h"
 
-void container_initialize_network_namespace(container_t *container);
-void container_spawn_network_relay(container_t *container);
+container_error_t container_set_hostname(container_t *container, const char *hostname);
+
+container_error_t container_networking_initialize_child(container_t *container);
+container_error_t container_networking_initialize_parent(container_t *container);
 
 #endif //PARANOID_NETWORKING_H

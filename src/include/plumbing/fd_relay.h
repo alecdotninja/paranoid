@@ -10,7 +10,6 @@ typedef struct fd_relay {
     int out_fd;
 } fd_relay_t;
 
-int copy_file(const char * source_file_path, const char * destination_file_path);
-fd_relay_t *spawn_fd_relay(int in_fd, int out_fd);
+fd_relay_t *fd_relay_spawn(int in_fd, int out_fd);
 
 #endif //PARANOID_PLUMBING_H

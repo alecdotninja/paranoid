@@ -8,7 +8,7 @@
 #include <sys/prctl.h>
 
 #include "container/container.h"
-#include "container/fs.h"
+#include "container/fsns.h"
 #include "container/init.h"
 #include "container/networking.h"
 #include "container/signaling.h"
@@ -17,60 +17,148 @@
 #include "container/unsafe.h"
 #include "container/userns.h"
 
-static int child_main(container_t *container) {
-    prctl(PR_SET_PDEATHSIG, SIGKILL);
+static container_error_t container_start_child(container_t *container) {
+    container_error_t error;
 
-    container_finalize_signaling_socket_child(container);
-
-    if(receive_message(container->child_signaling_fd) < 0) {
-        exit(EXIT_FAILURE);
+    if((error = container_signaling_initialize_child(container)) != CONTAINER_ERROR_OKAY) {
+       return error;
     }
 
-    setuid(0);
-    setgid(0);
-    setgroups(0, NULL);
+    if((error = container_user_namespace_initialize_child(container)) != CONTAINER_ERROR_OKAY) {
+        return error;
+    }
 
-    container_initialize_network_namespace(container);
-    container_initialize_fs_namespace(container);
+    if((error = container_networking_initialize_child(container)) != CONTAINER_ERROR_OKAY) {
+        return error;
+    }
 
+    if((error = container_fs_namespace_initialize(container)) != CONTAINER_ERROR_OKAY) {
+        return error;
+    }
+
+    // TODO: These should probably have some kind of error checking
     drop_unsafe_capabilities();
     disable_unsafe_syscalls();
 
-    container_child_setup_tty(container);
+    if((error = container_tty_initialize_child(container)) != CONTAINER_ERROR_OKAY) {
+        return error;
+    }
 
-    container_exec_init(container);
+    if((error = container_init_exec(container)) != CONTAINER_ERROR_OKAY) {
+        return error;
+    }
 
-    return EXIT_FAILURE;
+    return CONTAINER_ERROR_OKAY;
 }
 
-void container_start(container_t *container) {
+static container_error_t container_start_parent(container_t *container) {
+    container_error_t error;
+
+    if((error = container_signaling_initialize_parent(container)) != CONTAINER_ERROR_OKAY) {
+        return error;
+    }
+
+    if((error = container_user_namespace_initialize_parent(container)) != CONTAINER_ERROR_OKAY) {
+        return error;
+    }
+
+    if((error = container_networking_initialize_parent(container)) != CONTAINER_ERROR_OKAY) {
+        return error;
+    }
+
+    if((error = container_tty_initialize_parent(container)) != CONTAINER_ERROR_OKAY) {
+        return error;
+    }
+
+    return CONTAINER_ERROR_OKAY;
+}
+
+container_error_t container_init(container_t *container) {
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
+    container->state = CONTAINER_STATE_STOPPED;
+    container->parent_signaling_fd = -1;
+    container->child_signaling_fd = -1;
+    container->hostname = NULL;
+    container->network_relay = NULL;
+    container->root_path = NULL;
+    container->stdin_relay = NULL;
+    container->stdout_relay = NULL;
+    container->init_pid = 0;
+    container->init_argc = 0;
+    container->init_argv = NULL;
+    container->init_exit_code = 0;
+
+    return CONTAINER_ERROR_OKAY;
+}
+
+container_error_t container_start(container_t *container) {
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
+    if(container->state != CONTAINER_STATE_STOPPED) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
     if(geteuid() == 0 || getegid() == 0) {
-        fprintf(stderr, "[!] Warning! paraniod is not designed to be run as root.\n");
+        return CONTAINER_ERROR_ROOT;
     }
 
-    container_initialize_signaling_socket(container);
-    container_spawn_child(container, child_main);
-    container_finalize_signaling_socket_parent(container);
-    container_initialize_user_namespace(container);
+    container->state = CONTAINER_STATE_STARTING;
 
-    send_message(container->parent_signaling_fd, 0);
+    container_error_t error;
 
-    container_spawn_network_relay(container);
-    container_spawn_tty_relay(container);
+    if((error = container_signaling_initialize_pre_spawn(container)) != CONTAINER_ERROR_OKAY) {
+        goto failed_initialize_signaling_socket;
+    }
+
+    if((error = container_spawn(container, container_start_child)) != CONTAINER_ERROR_OKAY) {
+        goto failed_spawn_child;
+    }
+
+    if((error = container_start_parent(container)) != CONTAINER_ERROR_OKAY) {
+        goto failed_start_parent;
+    }
+
+    return CONTAINER_ERROR_OKAY;
+
+failed_start_parent:
+    container_spawn_kill(container);
+
+failed_spawn_child:
+    container_signaling_finalize(container);
+
+failed_initialize_signaling_socket:
+    container->state = CONTAINER_STATE_STOPPED;
+
+    return error;
 }
 
-void container_wait(container_t *container) {
-    int child_status;
+container_error_t container_wait(container_t *container) {
+    int status;
 
-    if(waitpid(container->child_pid, &child_status, 0) < 0) {
-        fprintf(stderr, "[!] Cannot wait for child process with pid %i. Perhaps it died too soon.\n", container->child_pid);
-        exit(EXIT_FAILURE);
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
     }
 
-    if(!WIFEXITED(child_status)) {
-        fprintf(stderr, "[!] Child process with pid %i terminated abnormally. Perhaps it was killed or segfault'd.\n", container->child_pid);
-        exit(EXIT_FAILURE);
+    if(container->state == CONTAINER_STATE_STOPPED) {
+        return CONTAINER_ERROR_OKAY;
     }
 
-    container->exit_code = WEXITSTATUS(child_status);
+    if(container->init_pid < 0) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
+    do {
+        if(waitpid(container->init_pid, &status, 0) < 0) {
+            return CONTAINER_ERROR_SYSTEM;
+        }
+    }while(!WIFEXITED(status) && !WIFSIGNALED(status));
+
+    container->init_exit_code = WEXITSTATUS(status);
+
+    return CONTAINER_ERROR_OKAY;
 }

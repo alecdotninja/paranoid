@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <container/signaling.h>
+#include <grp.h>
 
 #include "container/userns.h"
 
@@ -178,13 +180,28 @@ static int map_effective_id_as_root_and_subids_for_process(pid_t pid) {
     return 0;
 }
 
-void container_initialize_user_namespace(container_t *container) {
-    if(map_effective_id_as_root_and_subids_for_process(container->child_pid) < 0) {
-        fprintf(stderr, "[*] Failed to subids into namespace. Falling back to single user mapping...\n");
+container_error_t container_user_namespace_initialize_parent(container_t *container) {
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
 
-        if(map_effective_id_as_root_for_process(container->child_pid) < 0) {
-            fprintf(stderr, "[!] Failed to map effective user into namespace!\n");
-            exit(EXIT_FAILURE);
+    if(map_effective_id_as_root_and_subids_for_process(container->init_pid) < 0) {
+        if(map_effective_id_as_root_for_process(container->init_pid) < 0) { // fallback to just root in container
+            return CONTAINER_ERROR_USER;
         }
     }
+
+    return container_signaling_sync(container);
+}
+
+container_error_t container_user_namespace_initialize_child(container_t *container) {
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
+    setuid(0);
+    setgid(0);
+    setgroups(0, NULL);
+
+    return container_signaling_sync(container);
 }

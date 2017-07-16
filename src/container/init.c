@@ -22,23 +22,41 @@ static ssize_t mkenviron(char *buffer, size_t buffer_size, const char *key, cons
     }
 }
 
-void container_exec_init(container_t *container) {
+container_error_t container_init_exec(container_t *container) {
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
     char term_environ[32];
     if(mkenviron(term_environ, sizeof(term_environ), "TERM", "linux") < 0) {
-        fprintf(stderr, "[!] Failed to setup env.\n");
-        exit(EXIT_FAILURE);
+        return CONTAINER_ERROR_SANITY;
     }
 
     char lang_environ[32];
     if(mkenviron(lang_environ, sizeof(lang_environ), "LANG", "en_US.UTF-8") < 0) {
-        fprintf(stderr, "[!] Failed to setup env.\n");
-        exit(EXIT_FAILURE);
+        return CONTAINER_ERROR_SANITY;
     }
 
     char *envp[] = { term_environ, lang_environ, "container=paranoid", NULL };
 
     if(execvpe(container->init_argv[0], container->init_argv, envp) < 0) {
-        fprintf(stderr, "[!] Failed to exec init (%s).\n", container->init_argv[0]);
-        exit(EXIT_FAILURE);
+        return CONTAINER_ERROR_SYSTEM;
     }
+
+    return CONTAINER_ERROR_SANITY;
+}
+
+container_error_t container_set_init(container_t *container, int argc, char ** argv) {
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
+    if(container->state != CONTAINER_STATE_STOPPED) {
+        return CONTAINER_ERROR_ARG;
+    }
+
+    container->init_argc = argc;
+    container->init_argv = argv;
+
+    return CONTAINER_ERROR_OKAY;
 }

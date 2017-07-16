@@ -1,5 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <container/networking.h>
+#include <container/fsns.h>
+#include <container/init.h>
+#include <errno.h>
 
 #include "container/container.h"
 
@@ -11,13 +15,18 @@ int main(int argc, char *argv[]) {
     }
 
     container_t container;
-    container.hostname = argv[1];
-    container.root_path = argv[2];
-    container.init_argc = argc - 2;
-    container.init_argv = &argv[3];
+    container_init(&container);
 
-    container_start(&container);
+    container_set_hostname(&container, argv[1]);
+    container_set_root_path(&container, argv[2]);
+    container_set_init(&container, argc - 2, &argv[3]);
+
+    container_error_t error;
+    if((error = container_start(&container)) != CONTAINER_ERROR_OKAY) {
+        fprintf(stderr, "[!] Failed to start container! (%i, %i)\n", error, errno);
+    }
+
     container_wait(&container);
 
-    return container.exit_code;
+    return container.init_exit_code;
 }

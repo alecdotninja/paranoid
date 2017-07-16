@@ -7,6 +7,7 @@
 
 #include "container.h"
 
-void container_initialize_user_namespace(container_t *container);
+container_error_t container_user_namespace_initialize_parent(container_t *container);
+container_error_t container_user_namespace_initialize_child(container_t *container);
 
 #endif //PARANOID_USERNS_H

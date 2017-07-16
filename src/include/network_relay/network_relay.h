@@ -52,6 +52,6 @@ typedef struct network_relay {
     network_relay_tcp_connection_t *tcp_connection;
 } network_relay_t;
 
-network_relay_t *spawn_network_relay(int tap_fd, const ip_addr_t *ip, const ip_addr_t *netmask);
+network_relay_t *network_relay_spawn(int tap_fd, const ip_addr_t *ip, const ip_addr_t *netmask);
 
 #endif //PARANOID_NETWORK_RELAY_H

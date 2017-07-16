@@ -39,37 +39,70 @@ static int open_tap() {
     return fd;
 }
 
-void container_initialize_network_namespace(container_t *container) {
-    sethostname(container->hostname, strlen(container->hostname));
+container_error_t container_networking_initialize_child(container_t *container) {
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
+    if(container->hostname == NULL) {
+        return CONTAINER_ERROR_ARG;
+    }
+
+    if(sethostname(container->hostname, strlen(container->hostname)) < 0) {
+        return CONTAINER_ERROR_NET_HOSTNAME;
+    }
 
     int tap_fd;
     if((tap_fd = open_tap()) < 0) {
-        fprintf(stderr, "[!] Failed to create eth0\n");
-        exit(EXIT_FAILURE);
+        return CONTAINER_ERROR_NET_TAP;
     }
 
-    system("ip link set dev lo up");
-    system("ip link set dev eth0 up");
-    system("ip addr add 10.0.15.2 dev eth0");
-    system("ip route add 10.0.15.0/24 dev eth0");
-    system("ip route add default via 10.0.15.1");
+    if(system("ip link set dev lo up") != EXIT_SUCCESS) {
+        return CONTAINER_ERROR_NET_IFCONFIG;
+    }
 
-    if(send_fd(container->child_signaling_fd, tap_fd) < 0) {
-        fprintf(stderr, "[!] Failed to send eth0 outside of the container\n");
-        exit(EXIT_FAILURE);
+    if(system("ip link set dev eth0 up") != EXIT_SUCCESS) {
+        return CONTAINER_ERROR_NET_IFCONFIG;
+    }
+
+    if(system("ip addr add 10.0.15.2 dev eth0") != EXIT_SUCCESS) {
+        return CONTAINER_ERROR_NET_IFCONFIG;
+    }
+
+    if(system("ip route add 10.0.15.0/24 dev eth0") != EXIT_SUCCESS) {
+        return CONTAINER_ERROR_NET_IFCONFIG;
+    }
+
+    if(system("ip route add default via 10.0.15.1") != EXIT_SUCCESS) {
+        return CONTAINER_ERROR_NET_IFCONFIG;
+    }
+
+    container_error_t error;
+    if((error = container_signaling_sync_send_fd(container, &tap_fd)) != CONTAINER_ERROR_OKAY) {
+        return error;
     }
 
     if(close(tap_fd) < 0) {
-        fprintf(stderr, "[!] Failed to abandon eth0\n");
-        exit(EXIT_FAILURE);
+        return CONTAINER_ERROR_SYSTEM;
     }
+
+    return CONTAINER_ERROR_OKAY;
 }
 
-void container_spawn_network_relay(container_t *container) {
+container_error_t container_networking_initialize_parent(container_t *container) {
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
+    if(container->network_relay != NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
+    container_error_t error;
+
     int tap_fd;
-    if((tap_fd = recv_fd(container->parent_signaling_fd)) < 0) {
-        fprintf(stderr, "[!] Cannot claim eth0.\n");
-        exit(EXIT_FAILURE);
+    if((error = container_signaling_sync_recv_fd(container, &tap_fd)) != CONTAINER_ERROR_OKAY) {
+        return error;
     }
 
     ip_addr_t ip;
@@ -78,8 +111,27 @@ void container_spawn_network_relay(container_t *container) {
     IP4_ADDR(&ip, 10,0,15,1);
     IP4_ADDR(&netmask, 255,255,255,0);
 
-    if(spawn_network_relay(tap_fd, &ip, &netmask) == NULL) {
-        fprintf(stderr, "[!] Failed to spawn network relay.\n");
-        exit(EXIT_FAILURE);
+    if((container->network_relay = network_relay_spawn(tap_fd, &ip, &netmask)) == NULL) {
+        return CONTAINER_ERROR_NET_RELAY;
     }
+
+    return CONTAINER_ERROR_OKAY;
+}
+
+container_error_t container_set_hostname(container_t *container, const char *hostname) {
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
+    if(container->state != CONTAINER_STATE_STOPPED) {
+        return CONTAINER_ERROR_ARG;
+    }
+
+    if(hostname == NULL) {
+        return CONTAINER_ERROR_ARG;
+    }
+
+    container->hostname = hostname;
+
+    return CONTAINER_ERROR_OKAY;
 }
