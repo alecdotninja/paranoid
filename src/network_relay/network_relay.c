@@ -32,10 +32,85 @@ static void load_inet_into_sockaddr(struct sockaddr_in *sockaddr, const ip_addr_
     assert(inet_pton(AF_INET, buffer, &sockaddr->sin_addr) > 0);
 }
 
+static void load_sockaddr_into_inet(ip_addr_t *ip, u16_t *port, const struct sockaddr_in *sockaddr) {
+    assert(sockaddr->sin_family == AF_INET);
+
+    *port = ntohs(sockaddr->sin_port);
+
+    u32_t a, b, c, d;
+    char buffer[INET_ADDRSTRLEN];
+    assert(inet_ntop(AF_INET, &sockaddr->sin_addr, buffer, sizeof(buffer)) != NULL);
+    assert(sscanf(buffer, "%u.%u.%u.%u", &a, &b, &c, &d) == 4);
+    IP4_ADDR(ip, a,b,c,d);
+}
+
+static void network_relay_free_tcp_connection(network_relay_t *network_relay, network_relay_tcp_connection_t *target_tcp_connection);
+
+static err_t network_relay_tcp_connected(network_relay_t *network_relay, struct tcp_pcb *pcb, err_t err) {
+    network_relay_tcp_connection_t *tcp_connection = NULL;
+
+    if(err == ERR_OK) {
+        tcp_connection->is_connected = true;
+    }else{
+        network_relay_free_tcp_connection(network_relay, tcp_connection);
+    }
+
+    return ERR_OK;
+}
+
 static network_relay_tcp_connection_t * network_relay_alloc_tcp_connection(network_relay_t *network_relay, int socket_fd, struct tcp_pcb *pcb) {
-    assert(pcb != NULL); // for now
+    if(pcb == NULL && socket_fd < 0 || pcb != NULL && socket_fd >= 0) { // we need something to go on
+        return NULL;
+    }
+
+    bool is_connected = true;
+
+    if(pcb == NULL) {
+        assert(socket_fd >= 0);
+
+        struct sockaddr_in local_sockaddr = { 0 };
+        socklen_t local_socklen = sizeof(struct sockaddr_in);
+        if(getsockname(socket_fd, (struct sockaddr*)&local_sockaddr, &local_socklen) < 0) {
+            return NULL;
+        }
+
+        struct sockaddr_in remote_sockaddr = { 0 };
+        socklen_t remote_socklen = sizeof(struct sockaddr_in);
+        if(getpeername(socket_fd, (struct sockaddr*)&remote_sockaddr, &remote_socklen) < 0) {
+            return NULL;
+        }
+
+        ip_addr_t local_address;
+        u16_t local_port;
+        load_sockaddr_into_inet(&local_address, &local_port, &local_sockaddr);
+
+        ip_addr_t remote_address;
+        u16_t remote_port;
+        load_sockaddr_into_inet(&remote_address, &remote_port, &remote_sockaddr);
+
+        if((pcb = tcp_new()) == NULL) {
+            return NULL;
+        }
+
+        tcp_arg(pcb, network_relay);
+
+        if(tcp_bind(pcb, &local_address, local_port) != ERR_OK) {
+            // TODO: free the pcb?
+            return NULL;
+        }
+
+        if(tcp_connect(pcb, &remote_address, remote_port, (tcp_connected_fn)network_relay_tcp_connected) != ERR_OK) {
+            // TODO: free the pcb?
+            return NULL;
+        }
+
+        is_connected = false;
+    }
+
 
     if(socket_fd < 0) {
+        assert(pcb != NULL);
+
         struct sockaddr_in sockaddr = { 0 };
         load_inet_into_sockaddr(&sockaddr, &pcb->local_ip, pcb->local_port);
 
@@ -50,11 +125,15 @@ static network_relay_tcp_connection_t * network_relay_alloc_tcp_connection(netwo
             close(socket_fd);
             return NULL;
         }
+
+        is_connected = true;
     }
 
     network_relay_tcp_connection_t *tcp_connection = calloc(1, sizeof(network_relay_tcp_connection_t));
 
     if(tcp_connection != NULL) {
+        tcp_connection->is_connected = is_connected;
+
         tcp_connection->socket_fd = socket_fd;
         tcp_connection->pcb = pcb;
         tcp_connection->buffer_size = 0;
@@ -328,7 +407,7 @@ static void network_relay_tcp_prepare_fd_set(network_relay_t *network_relay, fd_
     while(tcp_connection != NULL) {
         network_relay_tcp_connection_t *next_tcp_connection = tcp_connection->next;
 
-        if(tcp_connection->buffer_size == 0 && tcp_connection->is_flushed) { // there's no point waiting for data that we can't handle
+        if(tcp_connection->is_connected && tcp_connection->buffer_size == 0 && tcp_connection->is_flushed) { // there's no point waiting for data that we can't handle
             int socket_fd = tcp_connection->socket_fd;
 
             if(max_fd != NULL && socket_fd > *max_fd) {
@@ -426,6 +505,91 @@ static void network_relay_init_upd(network_relay_t *network_relay) {
     network_relay->udp_listener = udp_listener;
 }
 
+static void network_relay_port_mapping_forward_tcp(port_mapping_t *port_mapping) {
+    struct sockaddr_in sockaddr = { 0 };
+    sockaddr.sin_family = AF_INET;
+    sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    sockaddr.sin_port = htons(port_mapping->local_port);
+
+    int socket_fd;
+    if((socket_fd = socket(AF_INET, SOCK_STREAM , 0)) < 0 ||
+            bind(socket_fd,(struct sockaddr *)&sockaddr , sizeof(sockaddr)) < 0 ||
+            listen(socket_fd, 16) < 0) {
+        fprintf(stderr, "[!] Failed to setup %hu -> %hu (tcp)", port_mapping->local_port, port_mapping->remote_port);
+        return;
+    }
+
+    port_mapping->socket_fd = socket_fd;
+}
+
+static void network_relay_forward(network_relay_t *network_relay, port_mapping_t *port_mapping) {
+    switch(port_mapping->protocol) {
+        case PORT_MAPPING_PROTOCOL_TCP:
+            network_relay_port_mapping_forward_tcp(port_mapping);
+            break;
+
+        case PORT_MAPPING_PROTOCOL_UDP:
+//            network_relay_forward_udp(network_relay, port_mapping);
+            break;
+    }
+}
+
+static void network_relay_forwarding_prepare_fd_set(network_relay_t *network_relay, fd_set *fd_set, int *max_fd) {
+    for(size_t index = 0; index < network_relay->port_mapping_count; index++) {
+        port_mapping_t port_mapping = network_relay->port_mappings[index];
+
+        if(max_fd != NULL && port_mapping.socket_fd > *max_fd) {
+            *max_fd = port_mapping.socket_fd;
+        }
+
+        FD_SET(port_mapping.socket_fd, fd_set);
+    }
+}
+
+void network_relay_forwarding_accept_tcp(network_relay_t *network_relay, port_mapping_t *port_mapping) {
+    struct sockaddr_in sockaddr = { 0 };
+    socklen_t socklen;
+
+    int socket_fd;
+    if((socket_fd = accept(port_mapping->socket_fd, (struct sockaddr *)&sockaddr, &socklen)) < 0) {
+        // failed to accept
+        return;
+    }
+
+    network_relay_tcp_connection_t *tcp_connection;
+    if((tcp_connection = network_relay_alloc_tcp_connection(network_relay, socket_fd, NULL)) == NULL) {
+        // failed to accept internally
+        close(socket_fd);
+        return;
+    }
+}
+
+static void network_relay_forwarding_respond_fd_set(network_relay_t *network_relay, fd_set *fd_set) {
+    for(size_t index = 0; index < network_relay->port_mapping_count; index++) {
+        port_mapping_t port_mapping = network_relay->port_mappings[index];
+
+        if(FD_ISSET(port_mapping.socket_fd, fd_set)) {
+            switch(port_mapping.protocol) {
+                case PORT_MAPPING_PROTOCOL_TCP:
+                    network_relay_forwarding_accept_tcp(network_relay, &port_mapping);
+                    break;
+
+                case PORT_MAPPING_PROTOCOL_UDP:
+                    // network_replay_forwarding_accept_udp(network_relay, &port_mapping);
+                    break;
+            }
+        }
+    }
+}
+
+static void network_relay_init_forwarding(network_relay_t *network_relay) {
+    for(size_t index = 0; index < network_relay->port_mapping_count; index++) {
+        port_mapping_t port_mapping = network_relay->port_mappings[index];
+
+        network_relay_forward(network_relay, &port_mapping);
+    }
+}
+
 static void network_relay_init(network_relay_t *network_relay) {
     ip_addr_t *ip = &network_relay->ip;
     ip_addr_t *netmask = &network_relay->netmask;
@@ -441,18 +605,22 @@ static void network_relay_init(network_relay_t *network_relay) {
 
     network_relay_init_tcp(network_relay);
     network_relay_init_upd(network_relay);
+
+    network_relay_init_forwarding(network_relay);
 }
 
 static void network_relay_prepare_fd_set(network_relay_t *network_relay, fd_set *fd_set, int *max_fd) {
     tapif_prepare_fd_set(&network_relay->netif, fd_set, max_fd);
     network_relay_tcp_prepare_fd_set(network_relay, fd_set, max_fd);
     network_relay_udp_prepare_fd_set(network_relay, fd_set, max_fd);
+    network_relay_forwarding_prepare_fd_set(network_relay, fd_set, max_fd);
 }
 
 static void network_relay_respond_fd_set(network_relay_t *network_relay, fd_set *fd_set) {
     tapif_respond_fd_set(&network_relay->netif, fd_set);
     network_relay_tcp_respond_fd_set(network_relay, fd_set);
     network_relay_udp_respond_fd_set(network_relay, fd_set);
+    network_relay_forwarding_respond_fd_set(network_relay, fd_set);
 }
 
 static void *network_relay_loop(network_relay_t *network_relay) {
@@ -493,10 +661,16 @@ static void *network_relay_loop(network_relay_t *network_relay) {
     return NULL;
 }
 
-network_relay_t *network_relay_spawn(int tap_fd, const ip_addr_t *ip, const ip_addr_t *netmask) {
+network_relay_t *network_relay_spawn(int tap_fd, const ip_addr_t *ip, const ip_addr_t *netmask, size_t port_mapping_count, port_mapping_t *port_mappings) {
     network_relay_t *network_relay = calloc(1, sizeof(network_relay_t));
+
     network_relay->tapif.fd = tap_fd;
+
+    network_relay->tcp_connection = NULL;
     network_relay->udp_connection = NULL;
+
+    network_relay->port_mappings = port_mappings;
+    network_relay->port_mapping_count = port_mapping_count;
 
     ip4_addr_set(&network_relay->ip, ip);
     ip4_addr_set(&network_relay->netmask, netmask);

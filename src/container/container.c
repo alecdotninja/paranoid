@@ -112,6 +112,8 @@ container_error_t container_init(container_t *container, const char *root_path, 
     container->networking_enabled = false;
     container->hostname = NULL;
     container->network_relay = NULL;
+    container->port_mappings = NULL;
+    container->port_mapping_count = 0;
 
     container->root_path = root_path;
     container->stdin_relay = NULL;

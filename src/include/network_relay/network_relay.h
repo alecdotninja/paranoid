@@ -11,8 +11,26 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+typedef enum {
+    PORT_MAPPING_PROTOCOL_TCP = 0,
+    PORT_MAPPING_PROTOCOL_UDP = 1
+} port_mapping_protocol_t;
+
+typedef struct port_mapping {
+    port_mapping_protocol_t protocol;
+
+    int socket_fd;
+
+    u16_t local_port;
+
+    ip_addr_t remote_address;
+    u16_t remote_port;
+} port_mapping_t;
+
 typedef struct network_relay_tcp_connection {
     struct network_relay_tcp_connection *next;
+
+    bool is_connected;
 
     int socket_fd;
     struct tcp_pcb *pcb;
@@ -50,8 +68,11 @@ typedef struct network_relay {
 
     network_relay_udp_connection_t *udp_connection;
     network_relay_tcp_connection_t *tcp_connection;
+
+    port_mapping_t *port_mappings;
+    size_t port_mapping_count;
 } network_relay_t;
 
-network_relay_t *network_relay_spawn(int tap_fd, const ip_addr_t *ip, const ip_addr_t *netmask);
+network_relay_t *network_relay_spawn(int tap_fd, const ip_addr_t *ip, const ip_addr_t *netmask, size_t port_mapping_count, port_mapping_t *port_mappings);
 
 #endif //PARANOID_NETWORK_RELAY_H

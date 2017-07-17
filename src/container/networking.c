@@ -119,7 +119,7 @@ container_error_t container_networking_initialize_parent(container_t *container)
     IP4_ADDR(&ip, 10,0,15,1);
     IP4_ADDR(&netmask, 255,255,255,0);
 
-    if((container->network_relay = network_relay_spawn(tap_fd, &ip, &netmask)) == NULL) {
+    if((container->network_relay = network_relay_spawn(tap_fd, &ip, &netmask, container->port_mapping_count, container->port_mappings)) == NULL) {
         return CONTAINER_ERROR_NET_RELAY;
     }
 
@@ -154,6 +154,21 @@ container_error_t container_networking_set_enabled(container_t *container, bool 
     }
 
     container->networking_enabled = networking_enabled;
+
+    return CONTAINER_ERROR_OKAY;
+}
+
+container_error_t container_networking_set_port_mappings(container_t *container, size_t port_mapping_count, port_mapping_t *port_mappings) {
+    if(container == NULL) {
+        return CONTAINER_ERROR_SANITY;
+    }
+
+    if(container->state != CONTAINER_STATE_STOPPED) {
+        return CONTAINER_ERROR_ARG;
+    }
+
+    container->port_mapping_count = port_mapping_count;
+    container->port_mappings = port_mappings;
 
     return CONTAINER_ERROR_OKAY;
 }

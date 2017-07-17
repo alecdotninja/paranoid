@@ -57,6 +57,8 @@ typedef struct container {
     bool networking_enabled;
     const char *hostname;
     network_relay_t *network_relay;
+    port_mapping_t *port_mappings;
+    size_t port_mapping_count;
 
     const char *root_path;
 
