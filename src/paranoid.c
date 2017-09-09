@@ -14,7 +14,7 @@ struct arguments {
     size_t port_mapping_count;
 };
 
-const char *argp_program_version = "paranoid-0.1.1";
+const char *argp_program_version = "paranoid-0.1.2";
 const char *argp_program_bug_address = "Github (https://github.com/anarchocurious/paranoid/issues)";
 const char *args_doc = "--root=ROOT_PATH -- INIT [INIT_ARGS...]";
 const char *doc =   "Paranoid is a fully rootless containeriztion tool. It allows unprivileged users "
