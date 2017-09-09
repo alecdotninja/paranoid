@@ -5,6 +5,7 @@
 #include <stropts.h>
 #include <pty.h>
 #include <pthread.h>
+#include <errno.h>
 
 #include "plumbing/fd_relay.h"
 
@@ -30,6 +31,10 @@ static void *do_relay(void *data) {
         }
 
         if((remaing = read(in_fd, &buffer, sizeof(buffer))) < 0) {
+            if(errno == EINTR) {
+                continue;
+            }
+
             break;
         }
 
@@ -39,6 +44,10 @@ static void *do_relay(void *data) {
 
         while(remaing > 0) {
             if((written = write(out_fd, &buffer, (size_t)remaing)) < 0) {
+                if(errno == EINTR) {
+                    continue;
+                }
+
                 break;
             }
 

@@ -18,6 +18,7 @@
 #include <netinet/in.h>
 #include <assert.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #include "network_relay/network_relay.h"
 
@@ -249,16 +250,24 @@ static network_relay_udp_connection_t * network_relay_alloc_udp_connection(netwo
     assert(pcb != NULL); // for now...
 
     if(socket_fd < 0) {
+        assert(pcb != NULL);
+
         struct sockaddr_in sockaddr = { 0 };
-        sockaddr.sin_family = AF_INET;
-        sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-        sockaddr.sin_port = htons(0);
+
+        if(ip_addr_cmp(&local_address, &network_relay->ip)) {
+            ip_addr_t loopback;
+            IP4_ADDR(&loopback, 127,0,0,1);
+
+            load_inet_into_sockaddr(&sockaddr, &loopback, local_port);
+        }else{
+            load_inet_into_sockaddr(&sockaddr, &local_address, local_port);
+        }
 
         if((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
             return NULL;
         }
 
-        if(bind(socket_fd, (struct sockaddr *)&sockaddr, sizeof(sockaddr)) < 0) {
+        if(connect(socket_fd, (struct sockaddr *)&sockaddr, sizeof(sockaddr)) < 0) {
             close(socket_fd);
             return NULL;
         }
@@ -318,23 +327,10 @@ static void network_relay_udp_connection_recv_socket(network_relay_udp_connectio
     }
 }
 
-static void network_relay_udp_connection_recv_pcb(network_relay_t *network_relay, network_relay_udp_connection_t *udp_connection, void *payload, size_t length) {
+static void network_relay_udp_connection_recv_pcb(network_relay_udp_connection_t *udp_connection, void *payload, size_t length) {
     udp_connection->last_used_at = time(NULL);
-
-    ip_addr_t local_ip = udp_connection->local_address;
-    u16_t local_port = udp_connection->local_port;
-
-    struct sockaddr_in sockaddr = { 0 };
-    if(ip_addr_cmp(&local_ip, &network_relay->ip)) {
-        ip_addr_t loopback;
-        IP4_ADDR(&loopback, 127,0,0,1);
-
-        load_inet_into_sockaddr(&sockaddr, &loopback, local_port);
-    }else{
-        load_inet_into_sockaddr(&sockaddr, &local_ip, local_port);
-    }
-
-    if(sendto(udp_connection->socket_fd, payload, length, 0, (struct sockaddr *)&sockaddr, sizeof(sockaddr)) < 0) {
+    
+    if(write(udp_connection->socket_fd, payload, length) < 0) {
         fprintf(stderr, "[!] UDP dropped message (this should never happen)\n");
     }
 }
@@ -343,7 +339,7 @@ static void network_relay_udp_recv_pcb(network_relay_t *network_relay, struct ud
     network_relay_udp_connection_t *udp_connection = network_relay_alloc_udp_connection(network_relay, *local_ip, local_port, *remote_ip, remote_port, -1, pcb);
 
     if(udp_connection != NULL) {
-        network_relay_udp_connection_recv_pcb(network_relay, udp_connection, p->payload, p->len);
+        network_relay_udp_connection_recv_pcb(udp_connection, p->payload, p->len);
     }
 
     pbuf_free(p);
@@ -672,6 +668,10 @@ static void *network_relay_loop(network_relay_t *network_relay) {
         network_relay_prepare_fd_set(network_relay, &fd_set, &max_fd);
 
         if(select(max_fd + 1, &fd_set, NULL, NULL, &tv) < 0) {
+            if(errno == EINTR) {
+                continue;
+            }
+
             break;
         }
 
