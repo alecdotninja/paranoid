@@ -7,6 +7,7 @@
 #include <string.h>
 #include <container/signaling.h>
 #include <grp.h>
+#include <pwd.h>
 
 #include "container/userns.h"
 
@@ -149,8 +150,9 @@ static int map_effective_id_as_root_and_subids_for_process(pid_t pid) {
     gid_t gid = geteuid();
     uid_t uid = geteuid();
 
+    const struct passwd *passwd;
     const char *loginname;
-    if((loginname = getlogin()) == NULL) {
+    if((passwd = getpwuid(uid)) == NULL || (loginname = passwd->pw_name) == NULL) {
         return -1;
     }
 
