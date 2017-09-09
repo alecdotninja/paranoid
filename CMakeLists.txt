@@ -27,6 +27,7 @@ set(
         src/lwip/core/tcp.c
         src/include/lwip/udp.h
         src/lwip/core/udp.c
+        src/lwip/core/ipv4/icmp.c
 
         vendor/lwip/src/api/api_lib.c
         vendor/lwip/src/api/api_msg.c
@@ -44,19 +45,9 @@ set(
         vendor/lwip/src/core/ipv4/autoip.c
         vendor/lwip/src/core/ipv4/dhcp.c
         vendor/lwip/src/core/ipv4/etharp.c
-        vendor/lwip/src/core/ipv4/icmp.c
         vendor/lwip/src/core/ipv4/igmp.c
         vendor/lwip/src/core/ipv4/ip4_addr.c
         vendor/lwip/src/core/ipv4/ip4_frag.c
-        vendor/lwip/src/core/ipv6/dhcp6.c
-        vendor/lwip/src/core/ipv6/ethip6.c
-        vendor/lwip/src/core/ipv6/icmp6.c
-        vendor/lwip/src/core/ipv6/inet6.c
-        vendor/lwip/src/core/ipv6/ip6_addr.c
-        vendor/lwip/src/core/ipv6/ip6.c
-        vendor/lwip/src/core/ipv6/ip6_frag.c
-        vendor/lwip/src/core/ipv6/mld6.c
-        vendor/lwip/src/core/ipv6/nd6.c
         vendor/lwip/src/core/mem.c
         vendor/lwip/src/core/memp.c
         vendor/lwip/src/core/netif.c

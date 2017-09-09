@@ -122,7 +122,15 @@ static network_relay_tcp_connection_t * network_relay_alloc_tcp_connection(netwo
         assert(pcb != NULL);
 
         struct sockaddr_in sockaddr = { 0 };
-        load_inet_into_sockaddr(&sockaddr, &pcb->local_ip, pcb->local_port);
+
+        if(ip_addr_cmp(&pcb->local_ip, &network_relay->ip)) {
+            ip_addr_t loopback;
+            IP4_ADDR(&loopback, 127,0,0,1);
+
+            load_inet_into_sockaddr(&sockaddr, &loopback, pcb->local_port);
+        }else{
+            load_inet_into_sockaddr(&sockaddr, &pcb->local_ip, pcb->local_port);
+        }
 
         char str[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &(sockaddr.sin_addr), str, INET_ADDRSTRLEN);
@@ -310,14 +318,21 @@ static void network_relay_udp_connection_recv_socket(network_relay_udp_connectio
     }
 }
 
-static void network_relay_udp_connection_recv_pcb(network_relay_udp_connection_t *udp_connection, void *payload, size_t length) {
+static void network_relay_udp_connection_recv_pcb(network_relay_t *network_relay, network_relay_udp_connection_t *udp_connection, void *payload, size_t length) {
     udp_connection->last_used_at = time(NULL);
 
     ip_addr_t local_ip = udp_connection->local_address;
     u16_t local_port = udp_connection->local_port;
 
     struct sockaddr_in sockaddr = { 0 };
-    load_inet_into_sockaddr(&sockaddr, &local_ip, local_port);
+    if(ip_addr_cmp(&local_ip, &network_relay->ip)) {
+        ip_addr_t loopback;
+        IP4_ADDR(&loopback, 127,0,0,1);
+
+        load_inet_into_sockaddr(&sockaddr, &loopback, local_port);
+    }else{
+        load_inet_into_sockaddr(&sockaddr, &local_ip, local_port);
+    }
 
     if(sendto(udp_connection->socket_fd, payload, length, 0, (struct sockaddr *)&sockaddr, sizeof(sockaddr)) < 0) {
         fprintf(stderr, "[!] UDP dropped message (this should never happen)\n");
@@ -328,7 +343,7 @@ static void network_relay_udp_recv_pcb(network_relay_t *network_relay, struct ud
     network_relay_udp_connection_t *udp_connection = network_relay_alloc_udp_connection(network_relay, *local_ip, local_port, *remote_ip, remote_port, -1, pcb);
 
     if(udp_connection != NULL) {
-        network_relay_udp_connection_recv_pcb(udp_connection, p->payload, p->len);
+        network_relay_udp_connection_recv_pcb(network_relay, udp_connection, p->payload, p->len);
     }
 
     pbuf_free(p);
