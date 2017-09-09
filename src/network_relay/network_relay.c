@@ -329,7 +329,7 @@ static void network_relay_udp_connection_recv_socket(network_relay_udp_connectio
 
 static void network_relay_udp_connection_recv_pcb(network_relay_udp_connection_t *udp_connection, void *payload, size_t length) {
     udp_connection->last_used_at = time(NULL);
-    
+
     if(write(udp_connection->socket_fd, payload, length) < 0) {
         fprintf(stderr, "[!] UDP dropped message (this should never happen)\n");
     }

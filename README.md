@@ -3,27 +3,36 @@
 Paranoid is a [limited](#limitations) but fully rootless containeriztion tool. It allows unprivelged users on a system 
 to create light-weight containers in which they can act as `root`.
 
-It definately shouldn't be used for anything serious. That said, since it doesn't require any elevated privileges, the 
+It definitely should not be used for anything serious. That said, since it doesn't require any elevated privileges, the 
 risk of escape is only as great as the user's rights outside of the container.
 
 ## Usage
 
-Paranoid only does  one thing, so there's only one command to learn. 
+```
+Usage: paranoid [OPTION...] --root=ROOT_PATH -- INIT [INIT_ARGS...]
 
-`paranoid` requires at least three arguments. The hostname of the new container, the path of the new rootfs, and the
-path to the init process **relative to the new rootfs**. Any additional arguments will be passed on to PID 1.
+  -e, --expose=PORT:PORT:PROTOCOL
+                             Expose PORT inside container as PORT on host via
+                             PROTOCOL (requires networking)
+  -h, --hostname=HOSTNAME    Set the hostname within the container
+  -N, --disable-networking   Disable networking within the container
+  -r, --root=ROOT_PATH       Set the root within the container
+  -?, --help                 Give this help list
+      --usage                Give a short usage message
+  -V, --version              Print program version
+```
 
 ![demo](demo.gif)
 
   1. Extract [a rootfs tarball](https://us.images.linuxcontainers.org/images) somewhere on your system (you can safely 
   ignore any permission errors related to `mknod` -- `/dev` will mounted as `tmpfs` and populated during initialization 
   anyway).
-  2. Run `paranoid container-hostname ./path-to-extracted-root-fs /bin/sh -c "/bin/login -f root"` to get an 
+  2. Run `paranoid --root=./path-to-extracted-root-fs -- /bin/sh -c "/bin/login -f root"` to get an 
   interactive shell as root inside the container.
   3. Profit!
 
 **NOTE:** If networking does not seem to be working, make sure that the `eth0` interface is up, has the address 
-`10.0.15.2`, is configured with the netmask `255.255.255.0` (`10.0.15.0/24`), and has `10.0.15.1` as a default gateway. You will also need to specify a DNS server in `/etc/resolv.conf`.
+`10.0.15.2`, is configured with the netmask `255.255.255.252` (`10.0.15.0/30`), and has `10.0.15.1` as a default gateway. You will also need to specify a DNS server in `/etc/resolv.conf`.
 
 ## Limitations
 
@@ -34,11 +43,8 @@ path to the init process **relative to the new rootfs**. Any additional argument
 ## Todos
 
   * Figure out why systemd hangs without output
-  * Add port exposure / port forwarding to the networking stack
-  * Add an ICMP relay (taking advantage of setuid binaries on the host like `ping` and `tracert`)
-  * Cleanup networking stack so that it can support proper local bindings and IP forwarding
+  * Add port exposure / port forwarding to the networking stack *(in progress)*
   * Add proper DHCP and DNS servers to the networking stack instead of pre-configuring the adapter in the container 
-  * Move the networking stack into it's own process so that it can be sandboxed and shared between multiple containers
   * Add sensible CLI interface and helpers for creating containers (extracting rootfs tars in usernamespace)
 
 ## Development

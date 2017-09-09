@@ -73,7 +73,7 @@ container_error_t container_networking_initialize_child(container_t *container) 
         return CONTAINER_ERROR_NET_IFCONFIG;
     }
 
-    if(system("ip route add 10.0.15.0/24 dev eth0") != EXIT_SUCCESS) {
+    if(system("ip route add 10.0.15.0/30 dev eth0") != EXIT_SUCCESS) {
         return CONTAINER_ERROR_NET_IFCONFIG;
     }
 
@@ -117,7 +117,7 @@ container_error_t container_networking_initialize_parent(container_t *container)
     ip_addr_t netmask;
 
     IP4_ADDR(&ip, 10,0,15,1);
-    IP4_ADDR(&netmask, 255,255,255,0);
+    IP4_ADDR(&netmask, 255,255,255,252);
 
     if((container->network_relay = network_relay_spawn(tap_fd, &ip, &netmask, container->port_mapping_count, container->port_mappings)) == NULL) {
         return CONTAINER_ERROR_NET_RELAY;
