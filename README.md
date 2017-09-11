@@ -6,6 +6,8 @@ to create light-weight containers in which they can act as `root`.
 It definitely should not be used for anything serious. That said, since it doesn't require any elevated privileges, the 
 risk of escape is only as great as the user's rights outside of the container.
 
+[![asciicast](https://asciinema.org/a/4RZtd6e1xKBS3MpUha9Qe2fF2.png)](https://asciinema.org/a/4RZtd6e1xKBS3MpUha9Qe2fF2)
+
 ## Usage
 
 ```
@@ -21,8 +23,6 @@ Usage: paranoid [OPTION...] --root=ROOT_PATH -- INIT [INIT_ARGS...]
       --usage                Give a short usage message
   -V, --version              Print program version
 ```
-
-![demo](demo.gif)
 
   1. Extract [a rootfs tarball](https://us.images.linuxcontainers.org/images) somewhere on your system (you can safely 
   ignore any permission errors related to `mknod` -- `/dev` will mounted as `tmpfs` and populated during initialization 
