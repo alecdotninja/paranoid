@@ -1,10 +1,13 @@
 # Paranoid
 
-Paranoid is a [limited](#limitations) but fully rootless containeriztion tool. It allows unprivelged users on a system 
+Paranoid is a [limited](#limitations) but fully rootless containerization tool. It allows unprivileged users on a system 
 to create light-weight containers in which they can act as `root`.
 
 It definitely should not be used for anything serious. That said, since it doesn't require any elevated privileges, the 
 risk of escape is only as great as the user's rights outside of the container.
+
+If you're feeling especially trusting, there are statically-linked, precompiled binaries available on 
+[the releases page](https://github.com/anarchocurious/paranoid/releases).
 
 [![asciicast](https://asciinema.org/a/4RZtd6e1xKBS3MpUha9Qe2fF2.png)](https://asciinema.org/a/4RZtd6e1xKBS3MpUha9Qe2fF2)
 
@@ -34,6 +37,31 @@ Usage: paranoid [OPTION...] --root=ROOT_PATH -- INIT [INIT_ARGS...]
 **NOTE:** If networking does not seem to be working, make sure that the `eth0` interface is up, has the address 
 `10.0.15.2`, is configured with the netmask `255.255.255.252` (`10.0.15.0/30`), and has `10.0.15.1` as a default gateway. You will also need to specify a DNS server in `/etc/resolv.conf`.
 
+## Why?
+
+Containers are awesome, but it seems paradoxical to me that I have to create them with a deamon running as root.
+
+## How?
+
+At a high-level, containers work with namespaces and anyone can create new namespaces. There are really only a couple of
+snags with a totally rootless implementation:
+
+  1. You can't map users that you can't act as into a new user namespace. This means that unprivileged users only get 
+  one user inside of the container, themselves as root. This isn't a deal-breaker, but it is annoying and does cause 
+  some compatibility issues with software that does not want to run as root.
+   
+  2. You can't communicate with the outside world from inside of an empty network namespace. The conventional way to 
+  solve this problem is to create a bridge between the host network namespace and the container's network namespace,
+  but this approach requires CAP_NET_ADMIN in the host namespace to create the adapter.
+   
+The issue with (1) is really that the kernel doesn't handle authentication. It doesn't know what -- if any -- additional
+uids a user may be allowed to use just like it doesn't know that a user is allowed to update his password entry in 
+`/etc/shadow`. This problem is solved by using the setuid helpers provided by the Shadow package on most distributions.
+
+(2) is solved by creating a TAP adapter in the container's network namespace and running the raw ethernet frames through
+a userspace networking stack which opens and manages the appropriate TCP/UDP sockets in the host network namespace 
+(ICMP_ECHO support is achieved by running the setuid `ping` binary in the host namespace).
+
 ## Limitations
 
   * If you want to support multiple users inside of your containers, make sure that the `newuidmap` and `newgidmap` 
@@ -59,6 +87,8 @@ Usage: paranoid [OPTION...] --root=ROOT_PATH -- INIT [INIT_ARGS...]
   * Add folder exposure / bind mounts
   
   * Add proper DHCP and DNS servers to the networking stack instead of pre-configuring the adapter in the container 
+
+  * Add IPv6 support
   
   * Add sensible CLI interface and helpers for creating containers (extracting rootfs tars in usernamespace)
 
