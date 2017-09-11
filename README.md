@@ -36,21 +36,38 @@ Usage: paranoid [OPTION...] --root=ROOT_PATH -- INIT [INIT_ARGS...]
 
 ## Limitations
 
-  * systemd hangs without output when used as the init system
-  * There is no way to expose a port from the container
-  * Networking does not support ICMP (ping/tracert)
+  * If you want to support multiple users inside of your containers, make sure that the `newuidmap` and `newgidmap` 
+    helpers from shadow are available on your system and that your user has entries in `/etc/subuid` and `/etc/subgid`. 
+    On Ubuntu, shadow is configured to create entries for every user in `/etc/subuid` and `/etc/subgid` by default, but 
+    the `newuidmap` and `newgidmap` helpers are in the `uidmap` package which is not installed by default anymore. 
+    
+    **TL;DR:** Run `sudo apt install uidmap` on Ubuntu and friends if you want to have more than the root user inside of 
+    your containers.
+  
+  * Systemd won't work as init inside of paranoid containers
+  
+  * There is no way to expose a port from the container on the host *(coming soon)*
+  
+  * There is no way to expose a folder from the host inside of the container
 
 ## Todos
 
-  * Figure out why systemd hangs without output
+  * Figure out how to get Systemd working
+  
   * Add port exposure / port forwarding to the networking stack *(in progress)*
+  
+  * Add folder exposure / bind mounts
+  
   * Add proper DHCP and DNS servers to the networking stack instead of pre-configuring the adapter in the container 
+  
   * Add sensible CLI interface and helpers for creating containers (extracting rootfs tars in usernamespace)
 
 ## Development
 
 This project uses [cmake](https://cmake.org/cmake-tutorial/). You can probably get it building by running 
 `cmake CMakeLists.txt` to generate the `Makefile`, then `make`.
+
+An autotools-style configure script is also included for convenience.
 
 
 ## Contributing
