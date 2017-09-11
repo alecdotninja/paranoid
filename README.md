@@ -16,9 +16,6 @@ If you're feeling especially trusting, there are statically-linked, precompiled 
 ```
 Usage: paranoid [OPTION...] --root=ROOT_PATH -- INIT [INIT_ARGS...]
 
-  -e, --expose=PORT:PORT:PROTOCOL
-                             Expose PORT inside container as PORT on host via
-                             PROTOCOL (requires networking)
   -h, --hostname=HOSTNAME    Set the hostname within the container
   -N, --disable-networking   Disable networking within the container
   -r, --root=ROOT_PATH       Set the root within the container
@@ -107,4 +104,5 @@ Bug reports and pull requests are welcome on [GitHub](https://github.com/anarcho
 
 ## License
 
-This library is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
+Most of this code is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT);
+however it includes components which are available under other licences (lwip, libcap, libcgroup, and libseccomp).
