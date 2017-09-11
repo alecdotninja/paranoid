@@ -201,9 +201,26 @@ container_error_t container_user_namespace_initialize_child(container_t *contain
         return CONTAINER_ERROR_SANITY;
     }
 
-    setuid(0);
-    setgid(0);
-    setgroups(0, NULL);
+    container_error_t container_error;
+    if((container_error = container_signaling_sync(container)) != CONTAINER_ERROR_OKAY) {
+        return container_error;
+    }
 
-    return container_signaling_sync(container);
+    if(setuid(0) < 0) {
+        return CONTAINER_ERROR_USER;
+    }
+
+    if(setgid(0) < 0) {
+        return CONTAINER_ERROR_USER;
+    }
+
+    if(setgroups(0, NULL) < 0) {
+        // if the user does not have a shadow with uid maps,
+        // we may have set /proc/self/setgroups so that this will fail
+        if(errno != EPERM) {
+            return CONTAINER_ERROR_USER;
+        }
+    }
+
+    return CONTAINER_ERROR_OKAY;
 }

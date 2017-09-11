@@ -26,23 +26,15 @@ static void load_inet_into_sockaddr(struct sockaddr_in *sockaddr, const ip_addr_
     assert(IP_IS_V4_VAL(ip));
 
     sockaddr->sin_family = AF_INET;
+    sockaddr->sin_addr.s_addr = ip->addr;
     sockaddr->sin_port = htons(port);
-
-    char buffer[INET_ADDRSTRLEN];
-    assert(snprintf(buffer, sizeof(buffer), "%u.%u.%u.%u", ip4_addr1(ip), ip4_addr2(ip), ip4_addr3(ip), ip4_addr4(ip)) > 0);
-    assert(inet_pton(AF_INET, buffer, &sockaddr->sin_addr) > 0);
 }
 
 static void load_sockaddr_into_inet(ip_addr_t *ip, u16_t *port, const struct sockaddr_in *sockaddr) {
     assert(sockaddr->sin_family == AF_INET);
 
     *port = ntohs(sockaddr->sin_port);
-
-    u32_t a, b, c, d;
-    char buffer[INET_ADDRSTRLEN];
-    assert(inet_ntop(AF_INET, &sockaddr->sin_addr, buffer, sizeof(buffer)) != NULL);
-    assert(sscanf(buffer, "%u.%u.%u.%u", &a, &b, &c, &d) == 4);
-    IP4_ADDR(ip, a,b,c,d);
+    ip->addr = sockaddr->sin_addr.s_addr;
 }
 
 static void network_relay_free_tcp_connection(network_relay_t *network_relay, network_relay_tcp_connection_t *target_tcp_connection);
@@ -244,8 +236,8 @@ static err_t network_relay_tcp_accept(network_relay_t *network_relay, struct tcp
 }
 
 static network_relay_udp_connection_t * network_relay_alloc_udp_connection(network_relay_t *network_relay,
-                                                                    ip_addr_t local_address, u16_t local_port,
-                                                                    ip_addr_t remote_address, u16_t remote_port,
+                                                                    ip_addr_t local_ip, u16_t local_port,
+                                                                    ip_addr_t remote_ip, u16_t remote_port,
                                                                     int socket_fd, struct udp_pcb *pcb) {
     assert(pcb != NULL); // for now...
 
@@ -254,13 +246,13 @@ static network_relay_udp_connection_t * network_relay_alloc_udp_connection(netwo
 
         struct sockaddr_in sockaddr = { 0 };
 
-        if(ip_addr_cmp(&local_address, &network_relay->ip)) {
+        if(ip_addr_cmp(&local_ip, &network_relay->ip)) {
             ip_addr_t loopback;
             IP4_ADDR(&loopback, 127,0,0,1);
 
             load_inet_into_sockaddr(&sockaddr, &loopback, local_port);
         }else{
-            load_inet_into_sockaddr(&sockaddr, &local_address, local_port);
+            load_inet_into_sockaddr(&sockaddr, &local_ip, local_port);
         }
 
         if((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -276,9 +268,9 @@ static network_relay_udp_connection_t * network_relay_alloc_udp_connection(netwo
     network_relay_udp_connection_t *udp_connection = calloc(1, sizeof(network_relay_udp_connection_t));
 
     if(udp_connection != NULL) {
-        udp_connection->local_address = local_address;
+        udp_connection->local_address = local_ip;
         udp_connection->local_port = local_port;
-        udp_connection->remote_address = remote_address;
+        udp_connection->remote_address = remote_ip;
         udp_connection->remote_port = remote_port;
 
         udp_connection->socket_fd = socket_fd;

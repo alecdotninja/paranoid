@@ -212,15 +212,23 @@ icmp_input(struct pbuf *p, struct netif *inp)
                     }
 
                     char ping_cmdline[1024];
-                    assert(snprintf(ping_cmdline, sizeof(ping_cmdline), "ping %u.%u.%u.%u -c 1 -t %u",
-                                    ip4_addr1(ip4_current_dest_addr()), ip4_addr2(ip4_current_dest_addr()),
-                                    ip4_addr3(ip4_current_dest_addr()), ip4_addr4(ip4_current_dest_addr()),
-                                    IPH_TTL(iphdr) - 1) > 0);
+
+                    if(snprintf(ping_cmdline, sizeof(ping_cmdline), "ping %u.%u.%u.%u -c 1 -t %u",
+                                ip4_addr1(ip4_current_dest_addr()), ip4_addr2(ip4_current_dest_addr()),
+                                ip4_addr3(ip4_current_dest_addr()), ip4_addr4(ip4_current_dest_addr()),
+                                IPH_TTL(iphdr) - 1) < 0) {
+                        goto icmperr;
+                    }
 
                     FILE *ping_stdout = popen(ping_cmdline, "r");
 
                     unsigned int ttl = 0;
-                    fscanf(ping_stdout, "%*[^\n]\n%*[^=]=%*[^=]=%u ", &ttl);
+
+                    if(fscanf(ping_stdout, "%*[^\n]\n%*[^=]=%*[^=]=%u ", &ttl) < 0) {
+                        pclose(ping_stdout);
+                        goto icmperr;
+                    }
+
                     int exitcode = pclose(ping_stdout);
 
                     if(WIFEXITED(exitcode) && WEXITSTATUS(exitcode) == EXIT_SUCCESS && ttl > 1) {
