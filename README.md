@@ -9,6 +9,8 @@ risk of escape is only as great as the user's rights outside of the container.
 If you're feeling especially trusting, there are statically-linked, precompiled binaries available on 
 [the releases page](https://github.com/anarchocurious/paranoid/releases).
 
+## Demo (via asciicast)
+
 [![asciicast](https://asciinema.org/a/4RZtd6e1xKBS3MpUha9Qe2fF2.png)](https://asciinema.org/a/4RZtd6e1xKBS3MpUha9Qe2fF2)
 
 ## Usage
