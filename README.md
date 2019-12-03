@@ -11,7 +11,7 @@ If you're feeling especially trusting, there are statically-linked, precompiled 
 
 ## Demo (via asciicast)
 
-[![asciicast](https://asciinema.org/a/4RZtd6e1xKBS3MpUha9Qe2fF2.png)](https://asciinema.org/a/4RZtd6e1xKBS3MpUha9Qe2fF2)
+[![asciicast](https://asciinema.org/a/284953.svg)](https://asciinema.org/a/284953)
 
 ## Usage
 
